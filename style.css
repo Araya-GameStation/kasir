@@ -1513,6 +1513,73 @@ body {
   font-weight: 700;
 }
 
+.compact-header {
+  padding: 12px !important;
+}
+
+.compact-header .session-header {
+  margin-bottom: 8px;
+  font-size: 13px;
+}
+
+.mini-stats {
+  grid-template-columns: repeat(4, 1fr) !important;
+  gap: 8px !important;
+  margin-bottom: 12px !important;
+}
+
+.mini-stats .stat-card {
+  padding: 8px !important;
+}
+
+.mini-stats .stat-label {
+  font-size: 11px !important;
+}
+
+.mini-stats .stat-value {
+  font-size: 14px !important;
+}
+
+/* Recap lebih kompak */
+.compact-recap {
+  margin-bottom: 12px !important;
+  padding: 8px !important;
+}
+
+.compact-preview {
+  max-height: 80px !important;
+  overflow-y: auto !important;
+}
+
+.compact-actions {
+  gap: 6px !important;
+}
+
+.compact-actions .btn {
+  padding: 6px 12px !important;
+  font-size: 12px !important;
+}
+
+.compact-card {
+  margin-bottom: 6px !important;
+}
+
+.history-scroll {
+  height: calc(100vh - 280px) !important; /* Sesuaikan dengan tinggi header */
+  overflow-y: auto !important;
+  padding: 12px !important;
+}
+
+@media (max-width: 768px) {
+  .history-scroll {
+    height: calc(100vh - 260px) !important;
+  }
+  
+  .mini-stats {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+}
+
 .recap-section {
   margin-bottom: 24px;
 }
