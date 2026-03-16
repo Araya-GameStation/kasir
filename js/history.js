@@ -1,16 +1,16 @@
 function renderHistory() {
-  if (!state.currentSession) { 
-    renderNoSession(); 
-    return; 
+  if (!state.currentSession) {
+    renderNoSession();
+    return;
   }
-  
+
   state.currentView = "history";
-  
+
   const totalIncome = state.transactions.reduce((sum, t) => sum + t.total, 0);
   const totalTransaksi = state.transactions.length;
   const totalCASH = state.transactions.reduce((sum, t) => sum + (t.cashAmount || (t.metodeBayar === 'tunai' ? t.total : 0)), 0);
   const totalQRIS = state.transactions.reduce((sum, t) => sum + (t.qrisAmount || (t.metodeBayar === 'qris' ? t.total : 0)), 0);
-  
+
   const recap = {};
   state.transactions.forEach(t => t.items.forEach(i => {
     if (!recap[i.name]) recap[i.name] = { qty: 0, total: 0 };
@@ -51,8 +51,9 @@ function renderHistory() {
             <h3><i class="fas fa-chart-bar"></i> Rekap Produk</h3>
             <div class="recap-scroll-container">
               <div class="recap-grid scrollable">
-                ${Object.keys(recap).length === 0 ? '<p class="text-muted">Belum ada data</p>' : 
-                  Object.keys(recap).sort().map(name => `
+                ${Object.keys(recap).length === 0 ?
+      '<p class="text-muted">Belum ada data</p>' :
+      Object.keys(recap).sort().map(name => `
                   <div class="recap-item">
                     <div class="recap-name">${name}</div>
                     <div class="recap-detail">
@@ -79,14 +80,14 @@ function renderHistory() {
           </div>
         </div>
         
-        <div class="smart-scroll" style="height: calc(100vh - 550px); min-height: 400px; overflow-y: auto;">
+        <div class="smart-scroll">
           <h3><i class="fas fa-history"></i> Riwayat Transaksi</h3>
           
-          ${state.transactions.length === 0 ? 
-            '<p class="text-center text-muted">Belum ada transaksi</p>' : 
-            state.transactions.map(t => {
-              const tgl = new Date(t.date.seconds ? t.date.seconds * 1000 : t.date);
-              return `
+          ${state.transactions.length === 0 ?
+      '<p class="text-center text-muted">Belum ada transaksi</p>' :
+      state.transactions.map(t => {
+        const tgl = new Date(t.date.seconds ? t.date.seconds * 1000 : t.date);
+        return `
                 <div class="transaction-card">
                   <div class="transaction-header">
                     <div class="transaction-info">
@@ -122,7 +123,7 @@ function renderHistory() {
                   ` : ''}
                 </div>
               `;
-            }).join('')}
+      }).join('')}
         </div>
       </main>
     </div>
@@ -132,9 +133,9 @@ function renderHistory() {
 function showDetailModal(trxId) {
   const trx = state.transactions.find(t => t.id === trxId);
   if (!trx) return;
-  
+
   const tgl = new Date(trx.date.seconds ? trx.date.seconds * 1000 : trx.date);
-  
+
   const itemsHTML = trx.items.map((item, index) => `
     <tr>
       <td style="padding: 8px 0;">${index + 1}</td>
@@ -144,7 +145,7 @@ function showDetailModal(trxId) {
       <td style="padding: 8px 0; text-align: right; font-weight: 600;">Rp ${formatRupiah(item.price * item.qty)}</td>
     </tr>
   `).join('');
-  
+
   const modal = document.createElement('div');
   modal.className = 'modal-overlay';
   modal.innerHTML = `
@@ -226,7 +227,7 @@ function showDetailModal(trxId) {
       </div>
     </div>
   `;
-  
+
   document.body.appendChild(modal);
 }
 
@@ -250,7 +251,7 @@ function toggleSelectAll() {
 async function deleteSelected() {
   if (state.selectedHistory.size === 0) return;
   if (!await showConfirm(`Hapus ${state.selectedHistory.size} transaksi?`)) return;
-  
+
   try {
     await Promise.all([...state.selectedHistory].map(id => dbCloud.collection("transactions").doc(id).delete()));
     state.selectedHistory.clear();
