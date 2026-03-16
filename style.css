@@ -2197,7 +2197,7 @@ letter-spacing: 1px;
   justify-content: center;
 }
 
-@media (max-width: 1024px) {
+@media (min-width: 768px) and (max-width: 1024px) and (orientation: portrait) {
   .checkout-panel {
     width: 320px;
   }
@@ -2205,9 +2205,61 @@ letter-spacing: 1px;
   .stats-grid {
     grid-template-columns: repeat(2, 1fr);
   }
+  
+  .menu-grid {
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  }
+  
+  .session-header {
+    padding: 14px 20px;
+  }
+  
+  .category-grid {
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  }
 }
 
-@media (max-width: 768px) {
+@media (min-width: 768px) and (max-width: 1024px) and (orientation: landscape) {
+  .sidebar {
+    width: 70px;
+  }
+  
+  .sidebar .brand,
+  .sidebar .nav-label {
+    display: none;
+  }
+  
+  .sidebar .nav-icon {
+    font-size: 22px;
+  }
+  
+  .sidebar .nav-item {
+    justify-content: center;
+    padding: 12px 0;
+  }
+  
+  .checkout-panel {
+    width: 300px;
+  }
+  
+  .main-content {
+    width: calc(100% - 370px);
+  }
+  
+  .menu-grid {
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  }
+  
+  .stats-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+  
+  .session-header {
+    padding: 10px 16px;
+  }
+}
+
+@media (max-width: 767px) and (orientation: portrait) {
   .pos-container {
     flex-direction: column;
   }
@@ -2215,8 +2267,7 @@ letter-spacing: 1px;
   .sidebar {
     position: absolute;
     left: -260px;
-    transition: left 0.3s;
-    height: 100vh;
+    transition: left 0.3s ease;
     z-index: 100;
   }
   
@@ -2226,57 +2277,156 @@ letter-spacing: 1px;
   
   .checkout-panel {
     width: 100%;
-    height: 300px;
+    height: 280px;
     order: 2;
   }
   
-  .stats-grid,
-  .backup-grid,
-  .settings-grid {
-    grid-template-columns: 1fr;
+  .main-content {
+    height: calc(100vh - 280px);
   }
   
   .menu-grid {
     grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
   }
   
+  .stats-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  
+  .session-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  
   .action-buttons,
   .selection-bar,
-  .modal-actions,
-  .btn-group {
+  .modal-actions {
     flex-direction: column;
   }
   
   .action-buttons .btn,
   .selection-bar .btn,
-  .modal-actions .btn,
-  .btn-group .btn {
+  .modal-actions .btn {
     width: 100%;
   }
   
-  .quick-buttons .btn {
-    flex: 1 1 calc(50% - 4px);
-  }
-  
-  .transaction-header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 12px;
-  }
-  
-  .transaction-amount {
-    width: 100%;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
-  
-  .detail-grid {
+  .backup-grid,
+  .settings-grid,
+  .category-grid {
     grid-template-columns: 1fr;
   }
+}
+
+@media (max-width: 767px) and (orientation: landscape) {
+  .sidebar {
+    width: 60px;
+  }
   
-  .table-actions {
-    justify-content: flex-start;
+  .sidebar .brand,
+  .sidebar .nav-label {
+    display: none;
+  }
+  
+  .sidebar .nav-icon {
+    font-size: 20px;
+  }
+  
+  .sidebar .nav-item {
+    justify-content: center;
+    padding: 10px 0;
+  }
+  
+  .toggle-sidebar {
+    display: none;
+  }
+  
+  .checkout-panel {
+    width: 280px;
+    height: 100vh;
+  }
+  
+  .main-content {
+    width: calc(100% - 340px);
+  }
+  
+  .menu-grid {
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  }
+  
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .session-header {
+    padding: 8px 12px;
+  }
+  
+  .cart-item {
+    padding: 6px 10px;
+  }
+  
+  .qty-btn {
+    width: 24px;
+    height: 24px;
+  }
+  
+  .total-amount {
+    font-size: 18px;
+  }
+  
+  .category-grid {
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  }
+}
+
+.mobile-header {
+  display: none;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+
+.mobile-menu-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: white;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+}
+
+.mobile-brand {
+  font-weight: 700;
+  font-size: 18px;
+  color: var(--primary);
+}
+
+.sidebar-overlay {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 90;
+  backdrop-filter: blur(3px);
+}
+
+.sidebar-overlay.active {
+  display: block;
+}
+
+@media (max-width: 767px) {
+  .mobile-header {
+    display: flex;
   }
 }
 
