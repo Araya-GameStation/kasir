@@ -427,7 +427,7 @@ async function editMenu(id) {
   
   const resepRows = menu.resep?.map((r, i) => `
     <div class="recipe-row" id="edit-recipe-row-${i}">
-      <select class="recipe-select" id="editBahan-${i}>
+      <select class="recipe-select" id="editBahan-${i}">
         <option value="">Pilih Bahan</option>
         ${state.rawMaterials.map(b => 
           `<option value="${b.id}" data-satuan="${b.satuan || 'pcs'}" ${b.id === r.bahanId ? 'selected' : ''}>${b.name} (${b.satuan || 'pcs'})</option>`
