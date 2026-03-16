@@ -49,17 +49,19 @@ function renderHistory() {
           
           <div class="recap-section">
             <h3><i class="fas fa-chart-bar"></i> Rekap Produk</h3>
-            <div class="recap-grid">
-              ${Object.keys(recap).length === 0 ? '<p class="text-muted">Belum ada data</p>' : 
-                Object.keys(recap).sort().map(name => `
-                <div class="recap-item">
-                  <div class="recap-name">${name}</div>
-                  <div class="recap-detail">
-                    <span>${recap[name].qty} pcs</span>
-                    <span>Rp ${formatRupiah(recap[name].total)}</span>
+            <div class="recap-scroll-container">
+              <div class="recap-grid scrollable">
+                ${Object.keys(recap).length === 0 ? '<p class="text-muted">Belum ada data</p>' : 
+                  Object.keys(recap).sort().map(name => `
+                  <div class="recap-item">
+                    <div class="recap-name">${name}</div>
+                    <div class="recap-detail">
+                      <span>${recap[name].qty} pcs</span>
+                      <span>Rp ${formatRupiah(recap[name].total)}</span>
+                    </div>
                   </div>
-                </div>
-              `).join('')}
+                `).join('')}
+              </div>
             </div>
           </div>
           
