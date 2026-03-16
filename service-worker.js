@@ -16,7 +16,6 @@ const urlsToCache = [
   '/js/printer.js'
 ];
 
-// Install service worker dan cache semua file
 self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(CACHE_NAME)
@@ -28,7 +27,6 @@ self.addEventListener('install', event => {
   );
 });
 
-// Aktifkan dan bersihkan cache lama
 self.addEventListener('activate', event => {
   event.waitUntil(
     caches.keys().then(cacheNames => {
@@ -44,18 +42,15 @@ self.addEventListener('activate', event => {
   );
 });
 
-// Ambil dari cache, fallback ke network
 self.addEventListener('fetch', event => {
   event.respondWith(
     caches.match(event.request)
       .then(response => {
         if (response) {
-          return response; // Ambil dari cache
+          return response;
         }
-        
-        // Fallback ke network
+
         return fetch(event.request).then(networkResponse => {
-          // Optional: cache file baru
           if (networkResponse.status === 200) {
             const responseClone = networkResponse.clone();
             caches.open(CACHE_NAME).then(cache => {
@@ -66,7 +61,6 @@ self.addEventListener('fetch', event => {
         });
       })
       .catch(() => {
-        // Kalau offline dan tidak ada di cache
         if (event.request.mode === 'navigate') {
           return caches.match('/index.html');
         }
