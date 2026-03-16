@@ -427,7 +427,7 @@ async function editMenu(id) {
   
   const resepRows = menu.resep?.map((r, i) => `
     <div class="recipe-row" id="edit-recipe-row-${i}">
-      <select class="recipe-select" id="editBahan-${i}">
+      <select class="recipe-select" id="editBahan-${i}">  // <-- Perbaiki di sini
         <option value="">Pilih Bahan</option>
         ${state.rawMaterials.map(b => 
           `<option value="${b.id}" data-satuan="${b.satuan || 'pcs'}" ${b.id === r.bahanId ? 'selected' : ''}>${b.name} (${b.satuan || 'pcs'})</option>`
@@ -493,23 +493,35 @@ async function editMenu(id) {
   });
 
   setTimeout(() => {
-    document.getElementById('editUseStock')?.addEventListener('change', function(e) {
-      document.getElementById('editStockField').style.display = e.target.checked ? 'block' : 'none';
-    });
+    console.log("Setting up event listeners...");
     
-    for (let i = 0; i < document.querySelectorAll('#editRecipeContainer .recipe-select').length; i++) {
+    const useStockCheck = document.getElementById('editUseStock');
+    if (useStockCheck) {
+      useStockCheck.addEventListener('change', function(e) {
+        const stockField = document.getElementById('editStockField');
+        if (stockField) {
+          stockField.style.display = e.target.checked ? 'block' : 'none';
+        }
+      });
+    }
+    
+    const rows = document.querySelectorAll('#editRecipeContainer .recipe-row');
+    rows.forEach((row, i) => {
       const select = document.getElementById(`editBahan-${i}`);
       if (select) {
         select.addEventListener('change', function(e) {
           const unit = e.target.options[e.target.selectedIndex]?.dataset?.satuan || 'pcs';
-          document.getElementById(`editUnit-${i}`).textContent = unit;
+          const unitSpan = document.getElementById(`editUnit-${i}`);
+          if (unitSpan) unitSpan.textContent = unit;
         });
       }
-    }
-  }, 100);
+    });
+  }, 300);
 
   window.addEditRecipeRow = function() {
     const container = document.getElementById('editRecipeContainer');
+    if (!container) return;
+    
     const index = container.children.length;
     const row = document.createElement('div');
     row.className = 'recipe-row';
@@ -525,10 +537,14 @@ async function editMenu(id) {
     `;
     container.appendChild(row);
     
-    document.getElementById(`editBahan-${index}`).addEventListener('change', function(e) {
-      const unit = e.target.options[e.target.selectedIndex]?.dataset?.satuan || 'pcs';
-      document.getElementById(`editUnit-${index}`).textContent = unit;
-    });
+    const select = document.getElementById(`editBahan-${index}`);
+    if (select) {
+      select.addEventListener('change', function(e) {
+        const unit = e.target.options[e.target.selectedIndex]?.dataset?.satuan || 'pcs';
+        const unitSpan = document.getElementById(`editUnit-${index}`);
+        if (unitSpan) unitSpan.textContent = unit;
+      });
+    }
   };
 
   window.removeEditRecipeRow = function(index) {
@@ -540,10 +556,23 @@ async function editMenu(id) {
 
   if (result !== 'save') return;
 
-  const name = document.getElementById('editName').value;
-  const price = parseInt(document.getElementById('editPrice').value);
-  const useStock = document.getElementById('editUseStock').checked;
-  const stock = useStock ? parseInt(document.getElementById('editStock').value) || 0 : 0;
+  console.log("Mengambil data dari form...");
+  
+  const nameInput = document.getElementById('editName');
+  const priceInput = document.getElementById('editPrice');
+  const useStockInput = document.getElementById('editUseStock');
+  const stockInput = document.getElementById('editStock');
+
+  if (!nameInput || !priceInput) {
+    console.error("Element form tidak ditemukan:", { nameInput, priceInput });
+    showToast("Error: Form tidak lengkap", 'error');
+    return;
+  }
+
+  const name = nameInput.value;
+  const price = parseInt(priceInput.value);
+  const useStock = useStockInput ? useStockInput.checked : false;
+  const stock = useStock && stockInput ? parseInt(stockInput.value) || 0 : 0;
 
   if (!name || !price) {
     showToast("Nama dan harga harus diisi", 'error');
@@ -552,12 +581,20 @@ async function editMenu(id) {
 
   const resep = [];
   const rows = document.querySelectorAll('#editRecipeContainer .recipe-row');
+  console.log("Jumlah baris resep:", rows.length);
   
   for (let i = 0; i < rows.length; i++) {
     const select = document.getElementById(`editBahan-${i}`);
-    const qty = parseFloat(document.getElementById(`editQty-${i}`)?.value);
+    const qtyInput = document.getElementById(`editQty-${i}`);
     
-    if (select?.value && qty > 0) {
+    if (!select || !qtyInput) {
+      console.log(`Baris ${i} tidak lengkap, skip`);
+      continue;
+    }
+    
+    const qty = parseFloat(qtyInput.value);
+    
+    if (select.value && qty > 0) {
       const bahan = state.rawMaterials.find(b => b.id === select.value);
       if (bahan) {
         resep.push({
@@ -570,16 +607,23 @@ async function editMenu(id) {
     }
   }
 
+  console.log("Data yang akan disimpan:", { name, price, useStock, stock, resep });
+
   try {
     await dbCloud.collection("menus").doc(id).update({
-      name, price, useStock, stock,
+      name, 
+      price, 
+      useStock, 
+      stock,
       resep: resep.length ? resep : null,
       updatedAt: new Date()
     });
     
+    console.log("Update sukses!");
     showToast("Menu diupdate");
     openCategory(state.currentCategoryId);
   } catch (error) {
+    console.error("Error detail:", error);
     showToast("Gagal: " + error.message, 'error');
   }
 }
