@@ -508,8 +508,8 @@ function exportToPDF() {
     doc.setFontSize(10);
     doc.text(`Total Transaksi: ${totalTransaksi}`, 20, y); y += 6;
     doc.text(`Total Cash: Rp ${formatRupiah(totalCash)}`, 20, y); y += 6;
-    doc.text(`Total QRIS: Rp ${formatRupiah(totalQRIS)}`, 20, y); y += 15;
-    doc.text(`Total Penjualan: Rp ${formatRupiah(totalPenjualan)}`, 20, y); y += 6;
+    doc.text(`Total QRIS: Rp ${formatRupiah(totalQRIS)}`, 20, y); y += 6;
+    doc.text(`Total Penjualan: Rp ${formatRupiah(totalPenjualan)}`, 20, y); y += 15;
     
     doc.setFontSize(12);
     doc.text("PRODUK TERLARIS", 14, y);
