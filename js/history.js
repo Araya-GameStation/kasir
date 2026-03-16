@@ -48,21 +48,24 @@ function renderHistory() {
           </div>
           
           <div class="recap-section">
-            <h3><i class="fas fa-chart-bar"></i> Rekap Produk</h3>
-            <div class="recap-scroll-container">
-              <div class="recap-grid scrollable">
-                ${Object.keys(recap).length === 0 ? 
-                  '<p class="text-muted">Belum ada data</p>' : 
-                  Object.keys(recap).sort().map(name => `
-                  <div class="recap-item">
-                    <div class="recap-name">${name}</div>
-                    <div class="recap-detail">
-                      <span>${recap[name].qty} pcs</span>
-                      <span>Rp ${formatRupiah(recap[name].total)}</span>
-                    </div>
-                  </div>
-                `).join('')}
-              </div>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+              <h3 style="margin: 0;"><i class="fas fa-chart-bar"></i> Rekap Produk</h3>
+              <button class="btn btn-secondary btn-sm" onclick="showRekapModal()">
+                <i class="fas fa-external-link-alt"></i> Lihat Lengkap
+              </button>
+            </div>
+  
+            <div class="recap-preview">
+              ${Object.keys(recap).length === 0 ? 
+               '<p class="text-muted">Belum ada data</p>' : 
+                Object.keys(recap).sort().slice(0, 3).map(name => `
+                <div class="recap-preview-item">
+                  <span class="recap-preview-name">${name}</span>
+                  <span class="recap-preview-value">${recap[name].qty} pcs • Rp ${formatRupiah(recap[name].total)}</span>
+                </div>
+              `).join('')}
+              ${Object.keys(recap).length > 3 ? 
+                `<div class="recap-preview-more">+${Object.keys(recap).length - 3} produk lainnya</div>` : ''}
             </div>
           </div>
           
@@ -128,6 +131,78 @@ function renderHistory() {
       </main>
     </div>
   `;
+}
+
+function showRekapModal() {
+  const recap = {};
+  state.transactions.forEach(t => t.items.forEach(i => {
+    if (!recap[i.name]) recap[i.name] = { qty: 0, total: 0 };
+    recap[i.name].qty += i.qty;
+    recap[i.name].total += i.price * i.qty;
+  }));
+  
+  const sortedItems = Object.entries(recap)
+    .sort((a, b) => b[1].qty - a[1].qty);
+  
+  const itemsHTML = sortedItems.map(([name, data], index) => `
+    <tr>
+      <td style="padding: 10px 0;">${index + 1}</td>
+      <td style="padding: 10px 0;">${name}</td>
+      <td style="padding: 10px 0; text-align: center;">${data.qty} pcs</td>
+      <td style="padding: 10px 0; text-align: right;">Rp ${formatRupiah(data.total)}</td>
+    </tr>
+  `).join('');
+  
+  const totalQty = sortedItems.reduce((sum, [_, data]) => sum + data.qty, 0);
+  const totalAmount = sortedItems.reduce((sum, [_, data]) => sum + data.total, 0);
+  
+  const modal = document.createElement('div');
+  modal.className = 'modal-overlay';
+  modal.innerHTML = `
+    <div class="modal modal-lg" style="max-width: 600px;">
+      <h3><i class="fas fa-chart-bar"></i> Rekap Produk Terjual</h3>
+      
+      <div style="max-height: 400px; overflow-y: auto; margin-bottom: 20px; border: 1px solid var(--border-light); border-radius: 12px;">
+        <table style="width: 100%; border-collapse: collapse;">
+          <thead style="position: sticky; top: 0; background: var(--surface); border-bottom: 2px solid var(--border);">
+            <tr>
+              <th style="padding: 12px; text-align: left;">No</th>
+              <th style="padding: 12px; text-align: left;">Nama Produk</th>
+              <th style="padding: 12px; text-align: center;">Terjual</th>
+              <th style="padding: 12px; text-align: right;">Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${itemsHTML || '<tr><td colspan="4" style="padding: 20px; text-align: center;">Belum ada data</td></tr>'}
+          </tbody>
+          <tfoot style="border-top: 2px solid var(--border); background: var(--bg-soft);">
+            <tr>
+              <td colspan="2" style="padding: 12px; text-align: right; font-weight: 600;">TOTAL</td>
+              <td style="padding: 12px; text-align: center; font-weight: 700;">${totalQty} pcs</td>
+              <td style="padding: 12px; text-align: right; font-weight: 700; color: var(--primary);">Rp ${formatRupiah(totalAmount)}</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+      
+      <div style="display: flex; gap: 12px; justify-content: flex-end;">
+        <button class="btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">Tutup</button>
+        <button class="btn btn-primary" onclick="exportRekapToExcel()">
+          <i class="fas fa-file-excel"></i> Export Excel
+        </button>
+      </div>
+    </div>
+  `;
+  
+  document.body.appendChild(modal);
+}
+
+function exportRekapToExcel() {
+  if (typeof window.exportToExcel === 'function') {
+    window.exportToExcel();
+  } else {
+    showToast("Fitur export tidak tersedia", 'warning');
+  }
 }
 
 function showDetailModal(trxId) {
