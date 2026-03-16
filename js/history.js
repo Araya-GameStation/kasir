@@ -77,7 +77,7 @@ function renderHistory() {
           </div>
         </div>
         
-        <div class="smart-scroll" style="height: calc(100vh - 550px); min-height: 400px; overflow-y: auto;">
+        <div class="smart-scroll">
           <h3><i class="fas fa-history"></i> Riwayat Transaksi</h3>
           
           ${state.transactions.length === 0 ? 
