@@ -1513,6 +1513,50 @@ body {
   font-weight: 700;
 }
 
+.recap-scroll-container {
+  max-height: 200px;
+  overflow-y: auto;
+  border-radius: 12px;
+  background: #f8fafc;
+  padding: 8px;
+  margin-bottom: 16px;
+  border: 1px solid var(--border-light);
+}
+
+.recap-scroll-container::-webkit-scrollbar {
+  width: 6px;
+}
+
+.recap-scroll-container::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.recap-scroll-container::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 10px;
+}
+
+.recap-scroll-container::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+.recap-grid.scrollable {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 8px;
+  padding-right: 4px;
+}
+
+@media (max-width: 768px) {
+  .recap-scroll-container {
+    max-height: 150px;
+  }
+  
+  .recap-grid.scrollable {
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  }
+}
+
 .recap-section {
   margin-bottom: 24px;
 }
