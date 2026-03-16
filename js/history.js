@@ -22,13 +22,13 @@ function renderHistory() {
     <div class="pos-container">
       ${getSidebarHTML()}
       <main class="main-content smart-layout">
-        <div class="smart-header compact-header"> <!-- Tambah class compact-header -->
+        <div class="smart-header">
           <div class="session-header">
             <span class="session-badge">SHIFT ${state.currentSession.shift}</span>
             <span>Buka: ${new Date(state.currentSession.waktuBuka.seconds * 1000).toLocaleString('id-ID')}</span>
           </div>
           
-          <div class="stats-grid mini-stats"> <!-- Tambah class mini-stats -->
+          <div class="stats-grid">
             <div class="stat-card">
               <div class="stat-label">Total Penjualan</div>
               <div class="stat-value">Rp ${formatRupiah(totalIncome)}</div>
@@ -47,67 +47,61 @@ function renderHistory() {
             </div>
           </div>
           
-          <div class="recap-section compact-recap"> <!-- Tambah class compact-recap -->
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;"> <!-- Kurangi margin -->
-              <h3 style="margin: 0; font-size: 14px;"><i class="fas fa-chart-bar"></i> Rekap Produk</h3> <!-- Kecilkan font -->
-              <button class="btn btn-secondary btn-sm" onclick="showRekapModal()" style="padding: 4px 8px; font-size: 12px;">
-                <i class="fas fa-external-link-alt"></i> Lihat
-              </button>
-            </div>
-  
-            <div class="recap-preview compact-preview"> <!-- Tambah class compact-preview -->
-              ${Object.keys(recap).length === 0 ? 
-               '<p class="text-muted" style="font-size: 13px;">Belum ada data</p>' : 
-                Object.keys(recap).sort().slice(0, 3).map(name => `
-                <div class="recap-preview-item" style="padding: 4px 0;"> <!-- Kurangi padding -->
-                  <span class="recap-preview-name" style="font-size: 13px;">${name}</span>
-                  <span class="recap-preview-value" style="font-size: 13px;">${recap[name].qty} pcs • Rp ${formatRupiah(recap[name].total)}</span>
+          <div class="recap-section">
+            <h3><i class="fas fa-chart-bar"></i> Rekap Produk</h3>
+            <div class="recap-grid">
+              ${Object.keys(recap).length === 0 ? '<p class="text-muted">Belum ada data</p>' : 
+                Object.keys(recap).sort().map(name => `
+                <div class="recap-item">
+                  <div class="recap-name">${name}</div>
+                  <div class="recap-detail">
+                    <span>${recap[name].qty} pcs</span>
+                    <span>Rp ${formatRupiah(recap[name].total)}</span>
+                  </div>
                 </div>
               `).join('')}
-              ${Object.keys(recap).length > 3 ? 
-                `<div class="recap-preview-more" style="font-size: 12px; padding-top: 4px;">+${Object.keys(recap).length - 3} produk lainnya</div>` : ''}
             </div>
           </div>
           
-          <div class="action-buttons compact-actions"> <!-- Tambah class compact-actions -->
-            <button class="btn btn-secondary btn-sm" onclick="toggleSelectAll()">
+          <div class="action-buttons">
+            <button class="btn btn-secondary" onclick="toggleSelectAll()">
               ${state.selectedHistory.size === state.transactions.length ? 'Batal Pilih' : 'Pilih Semua'}
             </button>
-            <button class="btn btn-secondary btn-sm ${state.selectedHistory.size > 0 ? 'btn-danger' : ''}" 
+            <button class="btn btn-secondary ${state.selectedHistory.size > 0 ? 'btn-danger' : ''}" 
                     onclick="deleteSelected()" ${state.selectedHistory.size === 0 ? 'disabled' : ''}>
               <i class="fas fa-trash"></i> Hapus ${state.selectedHistory.size > 0 ? `(${state.selectedHistory.size})` : ''}
             </button>
-            <button class="btn btn-warning btn-sm" onclick="cetakRekapSesi()">
+            <button class="btn btn-warning" onclick="cetakRekapSesi()">
               <i class="fas fa-print"></i> Cetak
             </button>
           </div>
         </div>
         
-        <div class="smart-scroll history-scroll" style="height: calc(100vh - 280px);"> <!-- Tinggi dinamis -->
-          <h3 style="margin: 0 0 12px 0; font-size: 16px;"><i class="fas fa-history"></i> Riwayat Transaksi</h3>
+        <div class="smart-scroll" style="height: calc(100vh - 550px); min-height: 400px; overflow-y: auto;">
+          <h3><i class="fas fa-history"></i> Riwayat Transaksi</h3>
           
           ${state.transactions.length === 0 ? 
             '<p class="text-center text-muted">Belum ada transaksi</p>' : 
             state.transactions.map(t => {
               const tgl = new Date(t.date.seconds ? t.date.seconds * 1000 : t.date);
               return `
-                <div class="transaction-card compact-card" style="margin-bottom: 8px;"> <!-- Tambah class compact-card -->
-                  <div class="transaction-header" style="padding: 10px;"> <!-- Kurangi padding -->
+                <div class="transaction-card">
+                  <div class="transaction-header">
                     <div class="transaction-info">
                       <input type="checkbox" ${state.selectedHistory.has(t.id) ? 'checked' : ''} 
-                             onchange="toggleSelect('${t.id}')" onclick="event.stopPropagation()" style="margin-right: 8px;">
+                             onchange="toggleSelect('${t.id}')" onclick="event.stopPropagation()">
                       <div>
-                        <div class="transaction-time" style="font-size: 13px;">${tgl.toLocaleTimeString('id-ID')} ${t.mejaNama ? `• ${t.mejaNama}` : ''}</div>
-                        <div class="transaction-meta" style="font-size: 11px;">${t.items.length} item • ${t.metodeBayar === 'tunai' ? 'CASH' : t.metodeBayar === 'qris' ? 'QRIS' : 'CAMPUR'}</div>
+                        <div class="transaction-time">${tgl.toLocaleTimeString('id-ID')} ${t.mejaNama ? `• ${t.mejaNama}` : ''}</div>
+                        <div class="transaction-meta">${t.items.length} item • ${t.metodeBayar === 'tunai' ? 'CASH' : t.metodeBayar === 'qris' ? 'QRIS' : 'CAMPUR'}</div>
                       </div>
                     </div>
                     <div class="transaction-amount">
-                      <div class="transaction-total" style="font-size: 14px;">Rp ${formatRupiah(t.total)}</div>
+                      <div class="transaction-total">Rp ${formatRupiah(t.total)}</div>
                       <div class="transaction-actions">
-                        <button class="btn btn-icon" style="padding: 4px;" onclick="showDetailModal('${t.id}'); event.stopPropagation()">
+                        <button class="btn btn-icon" onclick="showDetailModal('${t.id}'); event.stopPropagation()">
                           <i class="fas fa-eye"></i>
                         </button>
-                        <button class="btn btn-icon" style="padding: 4px;" onclick="reprintReceipt('${t.id}'); event.stopPropagation()">
+                        <button class="btn btn-icon" onclick="reprintReceipt('${t.id}'); event.stopPropagation()">
                           <i class="fas fa-print"></i>
                         </button>
                       </div>
@@ -115,8 +109,8 @@ function renderHistory() {
                   </div>
                   
                   ${state.expandedHistory === t.id ? `
-                    <div class="transaction-detail" style="padding: 8px 10px; font-size: 12px;"> <!-- Kurangi padding -->
-                      <div class="detail-grid" style="grid-template-columns: repeat(2, 1fr); gap: 8px;">
+                    <div class="transaction-detail">
+                      <div class="detail-grid">
                         <div><i class="fas fa-money-bill-wave"></i> CASH: Rp ${formatRupiah(t.cashAmount || (t.metodeBayar === 'tunai' ? t.total : 0))}</div>
                         <div><i class="fas fa-qrcode"></i> QRIS: Rp ${formatRupiah(t.qrisAmount || (t.metodeBayar === 'qris' ? t.total : 0))}</div>
                         <div><i class="fas fa-calculator"></i> Total: Rp ${formatRupiah(t.total)}</div>
