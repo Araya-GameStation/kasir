@@ -427,7 +427,7 @@ async function editMenu(id) {
   
   const resepRows = menu.resep?.map((r, i) => `
     <div class="recipe-row" id="edit-recipe-row-${i}">
-      <select class="recipe-select" id="editBahan-${i}">  // <-- Perbaiki di sini
+      <select class="recipe-select" id="editBahan-${i}">
         <option value="">Pilih Bahan</option>
         ${state.rawMaterials.map(b => 
           `<option value="${b.id}" data-satuan="${b.satuan || 'pcs'}" ${b.id === r.bahanId ? 'selected' : ''}>${b.name} (${b.satuan || 'pcs'})</option>`
@@ -492,8 +492,34 @@ async function editMenu(id) {
     ]
   });
 
-  setTimeout(() => {
-    console.log("Setting up event listeners...");
+  if (result === 'save') {
+    console.log("User klik SIMPAN, menunggu DOM siap...");
+    
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    let nameInput = null;
+    let priceInput = null;
+    let retry = 0;
+    
+    while (retry < 5) {
+      nameInput = document.getElementById('editName');
+      priceInput = document.getElementById('editPrice');
+      
+      if (nameInput && priceInput) {
+        console.log("Element ditemukan setelah retry ke-" + retry);
+        break;
+      }
+      
+      console.log(`Element belum ditemukan, retry ${retry + 1}/5...`);
+      await new Promise(resolve => setTimeout(resolve, 200));
+      retry++;
+    }
+    
+    if (!nameInput || !priceInput) {
+      console.error("Element tidak ditemukan setelah 5 retry");
+      showToast("Error: Form tidak dapat dimuat", 'error');
+      return;
+    }
     
     const useStockCheck = document.getElementById('editUseStock');
     if (useStockCheck) {
@@ -516,117 +542,100 @@ async function editMenu(id) {
         });
       }
     });
-  }, 300);
-
-  window.addEditRecipeRow = function() {
-    const container = document.getElementById('editRecipeContainer');
-    if (!container) return;
     
-    const index = container.children.length;
-    const row = document.createElement('div');
-    row.className = 'recipe-row';
-    row.id = `edit-recipe-row-${index}`;
-    row.innerHTML = `
-      <select class="recipe-select" id="editBahan-${index}">
-        <option value="">Pilih Bahan</option>
-        ${bahanOptions}
-      </select>
-      <input type="number" class="recipe-input" id="editQty-${index}" placeholder="Jumlah" min="0" step="0.1" value="1">
-      <span class="recipe-unit" id="editUnit-${index}">pcs</span>
-      <button type="button" class="recipe-remove" onclick="removeEditRecipeRow(${index})">×</button>
-    `;
-    container.appendChild(row);
+    const name = nameInput.value;
+    const price = parseInt(priceInput.value);
+    const useStock = useStockCheck ? useStockCheck.checked : false;
+    const stock = useStock ? parseInt(document.getElementById('editStock')?.value) || 0 : 0;
     
-    const select = document.getElementById(`editBahan-${index}`);
-    if (select) {
-      select.addEventListener('change', function(e) {
-        const unit = e.target.options[e.target.selectedIndex]?.dataset?.satuan || 'pcs';
-        const unitSpan = document.getElementById(`editUnit-${index}`);
-        if (unitSpan) unitSpan.textContent = unit;
-      });
-    }
-  };
-
-  window.removeEditRecipeRow = function(index) {
-    const row = document.getElementById(`edit-recipe-row-${index}`);
-    if (row && document.querySelectorAll('#editRecipeContainer .recipe-row').length > 1) {
-      row.remove();
-    }
-  };
-
-  if (result !== 'save') return;
-
-  console.log("Mengambil data dari form...");
-  
-  const nameInput = document.getElementById('editName');
-  const priceInput = document.getElementById('editPrice');
-  const useStockInput = document.getElementById('editUseStock');
-  const stockInput = document.getElementById('editStock');
-
-  if (!nameInput || !priceInput) {
-    console.error("Element form tidak ditemukan:", { nameInput, priceInput });
-    showToast("Error: Form tidak lengkap", 'error');
-    return;
-  }
-
-  const name = nameInput.value;
-  const price = parseInt(priceInput.value);
-  const useStock = useStockInput ? useStockInput.checked : false;
-  const stock = useStock && stockInput ? parseInt(stockInput.value) || 0 : 0;
-
-  if (!name || !price) {
-    showToast("Nama dan harga harus diisi", 'error');
-    return;
-  }
-
-  const resep = [];
-  const rows = document.querySelectorAll('#editRecipeContainer .recipe-row');
-  console.log("Jumlah baris resep:", rows.length);
-  
-  for (let i = 0; i < rows.length; i++) {
-    const select = document.getElementById(`editBahan-${i}`);
-    const qtyInput = document.getElementById(`editQty-${i}`);
-    
-    if (!select || !qtyInput) {
-      console.log(`Baris ${i} tidak lengkap, skip`);
-      continue;
+    if (!name || !price) {
+      showToast("Nama dan harga harus diisi", 'error');
+      return;
     }
     
-    const qty = parseFloat(qtyInput.value);
-    
-    if (select.value && qty > 0) {
-      const bahan = state.rawMaterials.find(b => b.id === select.value);
-      if (bahan) {
-        resep.push({
-          bahanId: bahan.id,
-          nama: bahan.name,
-          qty: qty,
-          satuan: bahan.satuan || 'pcs'
-        });
+    const resep = [];
+    for (let i = 0; i < rows.length; i++) {
+      const select = document.getElementById(`editBahan-${i}`);
+      const qtyInput = document.getElementById(`editQty-${i}`);
+      
+      if (!select || !qtyInput) continue;
+      
+      const qty = parseFloat(qtyInput.value);
+      
+      if (select.value && qty > 0) {
+        const bahan = state.rawMaterials.find(b => b.id === select.value);
+        if (bahan) {
+          resep.push({
+            bahanId: bahan.id,
+            nama: bahan.name,
+            qty: qty,
+            satuan: bahan.satuan || 'pcs'
+          });
+        }
       }
     }
-  }
-
-  console.log("Data yang akan disimpan:", { name, price, useStock, stock, resep });
-
-  try {
-    await dbCloud.collection("menus").doc(id).update({
-      name, 
-      price, 
-      useStock, 
-      stock,
-      resep: resep.length ? resep : null,
-      updatedAt: new Date()
-    });
     
-    console.log("Update sukses!");
-    showToast("Menu diupdate");
-    openCategory(state.currentCategoryId);
-  } catch (error) {
-    console.error("Error detail:", error);
-    showToast("Gagal: " + error.message, 'error');
+    console.log("Data yang akan disimpan:", { name, price, useStock, stock, resep });
+    
+    try {
+      await dbCloud.collection("menus").doc(id).update({
+        name, 
+        price, 
+        useStock, 
+        stock,
+        resep: resep.length ? resep : null,
+        updatedAt: new Date()
+      });
+      
+      console.log("Update sukses!");
+      showToast("Menu diupdate");
+      openCategory(state.currentCategoryId);
+    } catch (error) {
+      console.error("Error detail:", error);
+      showToast("Gagal: " + error.message, 'error');
+    }
   }
 }
+
+window.addEditRecipeRow = function() {
+  const container = document.getElementById('editRecipeContainer');
+  if (!container) return;
+  
+  const bahanOptions = state.rawMaterials.map(b => 
+    `<option value="${b.id}" data-satuan="${b.satuan || 'pcs'}">${b.name} (${b.satuan || 'pcs'})</option>`
+  ).join('');
+  
+  const index = container.children.length;
+  const row = document.createElement('div');
+  row.className = 'recipe-row';
+  row.id = `edit-recipe-row-${index}`;
+  row.innerHTML = `
+    <select class="recipe-select" id="editBahan-${index}">
+      <option value="">Pilih Bahan</option>
+      ${bahanOptions}
+    </select>
+    <input type="number" class="recipe-input" id="editQty-${index}" placeholder="Jumlah" min="0" step="0.1" value="1">
+    <span class="recipe-unit" id="editUnit-${index}">pcs</span>
+    <button type="button" class="recipe-remove" onclick="removeEditRecipeRow(${index})">×</button>
+  `;
+  container.appendChild(row);
+  
+  const select = document.getElementById(`editBahan-${index}`);
+  if (select) {
+    select.addEventListener('change', function(e) {
+      const unit = e.target.options[e.target.selectedIndex]?.dataset?.satuan || 'pcs';
+      const unitSpan = document.getElementById(`editUnit-${index}`);
+      if (unitSpan) unitSpan.textContent = unit;
+    });
+  }
+};
+
+window.removeEditRecipeRow = function(index) {
+  const row = document.getElementById(`edit-recipe-row-${index}`);
+  if (row && document.querySelectorAll('#editRecipeContainer .recipe-row').length > 1) {
+    row.remove();
+  }
+};
 
 async function deleteMenu(id) {
   if (!await showConfirm("Hapus menu ini?")) return;
