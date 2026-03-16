@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#0f172a">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="description" content="Sistem Kasir Garis Waktu - POS Modern dengan Manajemen Stok & Resep">
+  <title>KASIR GARIS WAKTU</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="logo.png">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+</head>
+<body>
+  <div id="app"></div>
+  <div id="modal-container"></div>
+  <div id="toast-container"></div>
+  <div id="print-notifications"></div>
+  
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+  
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyBkb9M6RGsZSDSsZPnTn_NpWDZFrdL3dMY",
+      authDomain: "garis-waktu-pos.firebaseapp.com",
+      projectId: "garis-waktu-pos",
+      storageBucket: "garis-waktu-pos.appspot.com",
+      messagingSenderId: "113767699030",
+      appId: "1:113767699030:web:6432c16dd4afd0218121f7"
+    };
+    firebase.initializeApp(firebaseConfig);
+    window.dbCloud = firebase.firestore();
+    dbCloud.enablePersistence({ synchronizeTabs: true }).catch(() => {});
+  </script>
+
+  <script src="js/printer.js"></script>
+  <script src="js/state.js"></script>
+  <script src="js/app.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/kasir.js"></script>
+  <script src="js/history.js"></script>
+  <script src="js/menuManager.js"></script>
+  <script src="js/bahanManager.js"></script>
+  <script src="js/settings.js"></script>
+  
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('service-worker.js')
+          .then(reg => console.log('✅ Service Worker terdaftar'))
+          .catch(err => console.log('❌ Service Worker gagal:', err));
+      });
+    }
+  </script>
+</body>
+</html>
