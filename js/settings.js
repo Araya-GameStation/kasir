@@ -115,7 +115,7 @@ function renderSettingsTab() {
           </button>
         </div>
         <table class="settings-table">
-          <thead>
+          <thead class="neu-table-head">
             <tr>
               <th class="p-3 text-left cursor-pointer" onclick="sortMeja('nomor')">
                 Nomor <i class="fas ${SortableTable.getSortIcon('meja', 'nomor')}"></i>

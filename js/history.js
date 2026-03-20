@@ -26,7 +26,9 @@ function renderHistory() {
     const content = `
     <div class="stack-y">
       <div class="session-header">
-        <span class="session-badge">SHIFT ${state.currentSession.shift}</span>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <span class="session-badge" style="box-shadow:var(--neu-inset);color:var(--primary-light);">SHIFT ${state.currentSession.shift}</span>
+        </div>
         <span>Buka: ${new Date(state.currentSession.waktuBuka.seconds * 1000).toLocaleString('id-ID')}</span>
       </div>
       <div class="stats-grid">
@@ -81,7 +83,7 @@ function renderHistory() {
       ${state.transactions.length === 0 ?
             '<p class="text-center text-muted">Belum ada transaksi</p>' :
             `<table class="w-full">
-        <thead class="bg-slate-100 dark:bg-slate-700">
+        <thead class="neu-table-head">
           <tr>
             <th class="p-3 text-left cursor-pointer" onclick="sortTransactions('date')">
               Waktu <i class="fas ${SortableTable.getSortIcon('transactions', 'date')}"></i>
@@ -99,14 +101,14 @@ function renderHistory() {
           ${sortedTransactions.map(t => {
                 const tgl = new Date(t.date.seconds ? t.date.seconds * 1000 : t.date);
                 return `
-              <tr class="border-b dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800">
+              <tr class="neu-table-row">
                 <td class="p-3">
                   <input type="checkbox" ${state.selectedHistory.has(t.id) ? 'checked' : ''} 
                          onchange="toggleSelect('${t.id}')" onclick="event.stopPropagation()">
                   <span class="ml-2">${tgl.toLocaleTimeString('id-ID')}</span>
                 </td>
                 <td class="p-3">${t.mejaNama || 'Take Away'}</td>
-                <td class="p-3 font-bold text-primary-600">Rp ${Utils.formatRupiah(t.total)}</td>
+                <td class="p-3 font-bold text-primary">Rp ${Utils.formatRupiah(t.total)}</td>
                 <td class="p-3">
                   <button class="btn btn-icon-sm" onclick="showDetailModal('${t.id}'); event.stopPropagation()">
                     <i class="fas fa-eye"></i>

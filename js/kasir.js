@@ -31,9 +31,9 @@ function renderKasir() {
   })).sort((a, b) => a.name.localeCompare(b.name));
 
   const content = `
-    <div style="display:flex;gap:24px;height:calc(100vh - 5rem);">
-      <div style="flex:1;display:flex;flex-direction:column;min-width:0;overflow:hidden;">
-        <div class="sticky top-0 z-10 smart-header rounded-xl" style="margin-bottom:12px;">
+    <div style="display:flex;gap:24px;height:calc(100vh - 5rem);overflow:hidden;">
+      <div style="flex:1;display:flex;flex-direction:column;min-width:0;overflow-x:hidden;overflow-y:visible;height:100%;">
+        <div class="sticky top-0 z-10 smart-header" style="margin:0 4px 16px 4px;border-radius:16px;">
           <div id="category-scroll-container">
             ${categoryNames.map(c => `
               <button onclick="selectCategory('${c}')"
@@ -54,7 +54,7 @@ function renderKasir() {
           <div class="panel-header-inner p-4 border-b">
             <div class="flex items-center justify-between">
               <h3 class="font-semibold text-lg">
-                <i class="fas fa-shopping-cart text-primary-600 mr-2"></i>
+                <i class="fas fa-shopping-cart text-primary mr-2"></i>
                 Pesanan
               </h3>
               <span class="nav-badge">
@@ -74,6 +74,12 @@ function renderKasir() {
   `;
 
   app.innerHTML = Layout.renderMain(content);
+
+  // Kasir kelola scroll sendiri — kunci main agar tidak double scroll
+  requestAnimationFrame(() => {
+    const mainEl = document.querySelector('main');
+    if (mainEl) { mainEl.style.overflow = 'hidden'; mainEl.style.padding = '16px 20px 0 20px'; }
+  });
 
   requestAnimationFrame(() => {
     const newMenuContainer = document.getElementById('menu-scroll-container');

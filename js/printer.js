@@ -1,6 +1,15 @@
 let printerDevice = null;
 let printerCharacteristic = null;
 let isPrinting = false;
+window.printerConnected = false;
+
+function updatePrinterStatus(connected) {
+    window.printerConnected = connected;
+    const dot = document.getElementById('printer-status-dot');
+    const label = document.getElementById('printer-nav-label');
+    if (dot) dot.style.background = connected ? '#22c55e' : '#ef4444';
+    if (label && !window.sidebarCollapsed) label.textContent = connected ? 'Printer (On)' : 'Printer';
+}
 
 async function connectPrinter() {
     try {
@@ -13,6 +22,7 @@ async function connectPrinter() {
         const service = await server.getPrimaryService(0x18F0);
         printerCharacteristic = await service.getCharacteristic(0x2AF1);
         Utils.showToast("Printer terhubung: " + printerDevice.name, "success");
+        updatePrinterStatus(true);
         return true;
     } catch (e) {
         console.error("Printer error:", e);
@@ -25,6 +35,7 @@ function onPrinterDisconnected() {
     Utils.showToast("Printer terputus", "warning");
     printerDevice = null;
     printerCharacteristic = null;
+    updatePrinterStatus(false);
 }
 
 async function disconnectPrinter() {
@@ -32,6 +43,7 @@ async function disconnectPrinter() {
         printerDevice.gatt.disconnect();
         printerDevice = null;
         printerCharacteristic = null;
+        updatePrinterStatus(false);
         Utils.showToast("Printer diputuskan", "success");
     }
 }

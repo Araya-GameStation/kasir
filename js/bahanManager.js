@@ -7,7 +7,7 @@ function renderBahanManager() {
     const content = `
     <div class="stack-y">
       <div class="flex justify-between items-center">
-        <h2 class="text-2xl font-bold"><i class="fas fa-boxes text-primary-600 mr-2"></i> Bahan Baku</h2>
+        <h2 class="text-2xl font-bold"><i class="fas fa-boxes text-primary mr-2"></i> Bahan Baku</h2>
         <div class="badge-group">
           <span class="badge badge-system">Total: ${state.rawMaterials.length}</span>
           <span class="badge badge-warning">Menipis: ${lowStockMaterials.length}</span>
@@ -39,7 +39,7 @@ function renderBahanManager() {
         </thead>
         <tbody>
           ${sortedBahan.map(b => `
-            <tr class="border-b dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800">
+            <tr class="neu-table-row">
               <td class="p-3 font-medium">${b.name}</td>
               <td class="p-3">
                 <span class="${b.stock <= (b.minStock || 5) ? 'text-danger font-bold' : ''}">
@@ -49,16 +49,16 @@ function renderBahanManager() {
               <td class="p-3">${b.minStock || 5} ${b.satuan || 'pcs'}</td>
               <td class="p-3">${b.supplier || '-'}</td>
               <td class="p-3">
-                <button class="btn btn-secondary btn-sm" onclick="tambahStokBahan('${b.id}')">
+                <button class="btn-icon-sm btn-icon-success" onclick="tambahStokBahan('${b.id}')" title="Tambah Stok">
                   <i class="fas fa-plus-circle"></i>
                 </button>
-                <button class="btn btn-secondary btn-sm" onclick="kurangiStokBahanManual('${b.id}')">
+                <button class="btn-icon-sm btn-icon-warning" onclick="kurangiStokBahanManual('${b.id}')" title="Kurangi Stok">
                   <i class="fas fa-minus-circle"></i>
                 </button>
-                <button class="btn btn-secondary btn-sm" onclick="editBahan('${b.id}')">
+                <button class="btn-icon-sm" onclick="editBahan('${b.id}')" title="Edit">
                   <i class="fas fa-edit"></i>
                 </button>
-                <button class="btn btn-danger btn-sm" onclick="hapusBahan('${b.id}')">
+                <button class="btn-icon-sm btn-icon-danger" onclick="hapusBahan('${b.id}')" title="Hapus">
                   <i class="fas fa-trash"></i>
                 </button>
               </td>

@@ -28,7 +28,7 @@ window.Layout = {
             </button>
           </div>
         </div>
-        <nav class="p-3 space-y-1">
+        <nav class="p-3">
           ${this.navItem('Kasir', 'cash-register', 'kasir', window.state.currentSession ? '<span class="w-2 h-2 bg-green-500 rounded-full animate-pulse ml-auto"></span>' : '')}
           ${this.navItem('Riwayat', 'history', 'history', `<span class="nav-badge">${window.state.transactions.length}</span>`)}
           ${this.navItem('Bahan', 'boxes', 'bahanManager', lowStockCount > 0 ? `<span class="nav-badge warning">${lowStockCount}</span>` : '')}
@@ -40,9 +40,12 @@ window.Layout = {
             <i class="fas fa-${document.documentElement.classList.contains('dark') ? 'sun' : 'moon'} nav-icon"></i>
             <span class="nav-label ${window.sidebarCollapsed ? 'hidden' : ''}">${document.documentElement.classList.contains('dark') ? 'Mode Terang' : 'Mode Gelap'}</span>
           </button>
-          <button onclick="window.connectPrinter()" class="nav-item ${window.sidebarCollapsed ? 'justify-center' : ''}">
-            <i class="fas fa-print nav-icon"></i>
-            <span class="nav-label ${window.sidebarCollapsed ? 'hidden' : ''}">Printer</span>
+          <button onclick="window.connectPrinter()" class="nav-item ${window.sidebarCollapsed ? 'justify-center' : ''}" id="printer-nav-btn">
+            <div style="position:relative;display:inline-flex;">
+              <i class="fas fa-print nav-icon"></i>
+              <span id="printer-status-dot" style="position:absolute;top:-3px;right:-4px;width:8px;height:8px;border-radius:50%;background:${window.printerConnected ? '#22c55e' : '#ef4444'};border:1.5px solid var(--neu-bg);flex-shrink:0;"></span>
+            </div>
+            <span class="nav-label ${window.sidebarCollapsed ? 'hidden' : ''}">${window.printerConnected ? 'Printer (On)' : 'Printer'}</span>
           </button>
           <button onclick="window.logout()" class="nav-item logout mt-1 ${window.sidebarCollapsed ? 'justify-center' : ''}">
             <i class="fas fa-sign-out-alt nav-icon text-danger"></i>
@@ -83,12 +86,12 @@ window.Layout = {
           ${this.getPageTitle()}
         </h1>
         ${window.state.currentSession ? `
-          <div class="flex items-center gap-4">
-            <div class="session-badge flex items-center gap-2">
-              <span class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
-              <span class="text-sm font-medium">Shift ${window.state.currentSession.shift}</span>
+          <div class="header-session-info">
+            <div class="header-shift-badge">
+              <span class="header-shift-dot"></span>
+              <span>Shift ${window.state.currentSession.shift}</span>
             </div>
-            <span class="text-sm text-muted hidden md:block">
+            <span class="header-email">
               ${window.state.user?.email}
             </span>
           </div>
@@ -116,6 +119,7 @@ window.Layout = {
 window.toggleDarkMode = function() {
   const isDark = document.documentElement.classList.toggle('dark');
   localStorage.setItem('darkMode', isDark);
+  if (typeof updateThemeColor === 'function') updateThemeColor();
   const currentView = window.state?.currentView;
   if (currentView === 'kasir') window.renderKasir?.();
   else if (currentView === 'history') window.renderHistory?.();

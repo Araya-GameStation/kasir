@@ -9,7 +9,7 @@ function renderMenuManager() {
     const content = `
     <div class="stack-y" style="min-width:0;width:100%;">
       <div class="flex justify-between items-center">
-        <h2 class="text-2xl font-bold"><i class="fas fa-utensils text-primary-600 mr-2"></i> Kelola Kategori & Menu</h2>
+        <h2 class="text-2xl font-bold"><i class="fas fa-utensils text-primary mr-2"></i> Kelola Kategori & Menu</h2>
         <button class="btn btn-primary" onclick="showAddCategoryModal()">
           <i class="fas fa-plus"></i> Tambah Kategori
         </button>
@@ -26,10 +26,10 @@ function renderMenuManager() {
                 <i class="fas fa-folder-open"></i> Buka Menu
               </button>
               ${!c.system ? `
-                <button class="btn btn-secondary btn-sm" onclick="editCategory('${c.id}')">
+                <button class="btn-icon-sm" onclick="editCategory('${c.id}')" title="Edit">
                   <i class="fas fa-pen"></i>
                 </button>
-                <button class="btn btn-danger btn-sm" onclick="deleteCategory('${c.id}')">
+                <button class="btn-icon-sm btn-icon-danger" onclick="deleteCategory('${c.id}')" title="Hapus">
                   <i class="fas fa-trash"></i>
                 </button>
               ` : ''}
@@ -104,8 +104,8 @@ function openCategory(id) {
     const content = `
     <div class="stack-y" style="min-width:0;width:100%;">
       <div class="flex justify-between items-center">
-        <h2 class="text-2xl font-bold"><i class="fas fa-folder-open text-primary-600 mr-2"></i> ${category.name}</h2>
-        <button class="btn btn-secondary" onclick="renderMenuManager()">
+        <h2 class="text-2xl font-bold"><i class="fas fa-folder-open text-primary mr-2"></i> ${category.name}</h2>
+        <button class="btn-kembali" onclick="renderMenuManager()">
           <i class="fas fa-arrow-left"></i> Kembali
         </button>
       </div>
@@ -122,7 +122,7 @@ function openCategory(id) {
         </button>
       </div>
       <table class="w-full">
-        <thead class="bg-slate-100 dark:bg-slate-700">
+        <thead class="neu-table-head">
           <tr>
             <th class="p-3 text-left">Pilih</th>
             <th class="p-3 text-left cursor-pointer" onclick="sortMenus('name')">
@@ -141,7 +141,7 @@ function openCategory(id) {
             sortedMenus.map(m => {
                 const stokOtomatis = m.resep ? Utils.hitungStokProduk(m) : null;
                 return `
-                <tr class="border-b dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800">
+                <tr class="neu-table-row">
                   <td class="p-3">
                     <input type="checkbox" ${state.selectedMenus.has(m.id) ? 'checked' : ''} 
                            onchange="toggleSelectMenu('${m.id}')">
@@ -157,10 +157,10 @@ function openCategory(id) {
                     }
                   </td>
                   <td class="p-3">
-                    <button class="btn btn-secondary btn-sm" onclick="editMenu('${m.id}')">
+                    <button class="btn-icon-sm" onclick="editMenu('${m.id}')" title="Edit">
                       <i class="fas fa-edit"></i>
                     </button>
-                    <button class="btn btn-danger btn-sm" onclick="deleteMenu('${m.id}')">
+                    <button class="btn-icon-sm btn-icon-danger" onclick="deleteMenu('${m.id}')" title="Hapus">
                       <i class="fas fa-trash"></i>
                     </button>
                   </td>
