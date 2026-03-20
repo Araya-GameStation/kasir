@@ -311,6 +311,7 @@ body {
 }
 
 .smart-header {
+  height: 60px;
   flex-shrink: 0;
   background: var(--surface);
   border-bottom: 1px solid var(--border);
