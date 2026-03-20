@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="theme-color" content="#1e3a8a">
+  <meta name="theme-color" content="">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="description" content="Sistem Kasir Garis Waktu - POS Modern dengan Manajemen Stok & Resep">
   <title>KASIR GARIS WAKTU</title>
@@ -16,54 +16,20 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="style.css">
+  <script>
+    function updateThemeColor() {
+      const color = getComputedStyle(document.documentElement).getPropertyValue('--primary-light').trim();
+      const meta = document.querySelector('meta[name="theme-color"]');
+      if (meta && color) meta.setAttribute('content', color);
+    }
+    document.addEventListener('DOMContentLoaded', updateThemeColor);
+  </script>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.21/lodash.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
   <script>
-    tailwind.config = {
-      darkMode: 'class',
-      theme: {
-        extend: {
-          colors: {
-            primary: {
-              50: '#eef2ff',
-              100: '#dbeafe',
-              200: '#bfdbfe',
-              300: '#93c5fd',
-              400: '#60a5fa',
-              500: '#3b82f6',
-              600: '#2563eb',
-              700: '#1d4ed8',
-              800: '#1e40af',
-              900: '#1e3a8a',
-              950: '#172554',
-            }
-          },
-          animation: {
-            'fade-in': 'fadeIn 0.3s ease-out',
-            'slide-up': 'slideUp 0.4s ease-out',
-            'slide-in-right': 'slideInRight 0.3s ease-out',
-            'pulse-slow': 'pulse 3s infinite',
-            'bounce-slow': 'bounce 2s infinite',
-          },
-          keyframes: {
-            fadeIn: {
-              '0%': { opacity: '0' },
-              '100%': { opacity: '1' },
-            },
-            slideUp: {
-              '0%': { transform: 'translateY(20px)', opacity: '0' },
-              '100%': { transform: 'translateY(0)', opacity: '1' },
-            },
-            slideInRight: {
-              '0%': { transform: 'translateX(100%)', opacity: '0' },
-              '100%': { transform: 'translateX(0)', opacity: '1' },
-            },
-          },
-        },
-      },
-    }
+    tailwind.config = { darkMode: 'class' }
   </script>
 </head>
 
@@ -112,7 +78,7 @@
           .catch(err => console.log('❌ Service Worker gagal:', err));
       });
     }
-    if (localStorage.getItem('darkMode') === 'true' || (window.matchMedia('(prefers-color-scheme: dark)').matches && !localStorage.getItem('darkMode'))) {
+    if (localStorage.getItem('darkMode') === 'true') {
       document.documentElement.classList.add('dark');
     }
   </script>
