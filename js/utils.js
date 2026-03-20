@@ -9,6 +9,10 @@ function cleanupListeners() {
     listeners.length = 0;
 }
 
+function _cssVar(name) {
+    return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+}
+
 window.Utils = {
     hitungStokProduk(produk) {
         if (!produk.resep || produk.resep.length === 0) {
@@ -37,6 +41,12 @@ window.Utils = {
         input.value = new Intl.NumberFormat("id-ID").format(parseInt(value));
     },
     showToast(message, type = 'success') {
+        const bgMap = {
+            success: _cssVar('--toast-success-bg'),
+            warning: _cssVar('--toast-warning-bg'),
+            error:   _cssVar('--toast-error-bg'),
+            info:    _cssVar('--toast-info-bg'),
+        };
         const Toast = Swal.mixin({
             toast: true,
             position: 'top-end',
@@ -44,16 +54,16 @@ window.Utils = {
             timer: 3000,
             timerProgressBar: true,
             didOpen: (toast) => {
-                toast.addEventListener('mouseenter', Swal.stopTimer)
-                toast.addEventListener('mouseleave', Swal.resumeTimer)
+                toast.addEventListener('mouseenter', Swal.stopTimer);
+                toast.addEventListener('mouseleave', Swal.resumeTimer);
             }
         });
         Toast.fire({
             icon: type,
             title: message,
-            background: type === 'success' ? '#10b981' : type === 'warning' ? '#f59e0b' : type === 'error' ? '#ef4444' : '#3b82f6',
-            color: '#ffffff',
-            iconColor: '#ffffff'
+            background: bgMap[type] || bgMap.info,
+            color: _cssVar('--toast-text'),
+            iconColor: _cssVar('--toast-text'),
         });
     },
     async showConfirm(message) {
@@ -62,13 +72,13 @@ window.Utils = {
             text: message,
             icon: 'question',
             showCancelButton: true,
-            confirmButtonColor: '#2563eb',
-            cancelButtonColor: '#64748b',
+            confirmButtonColor: _cssVar('--swal-confirm'),
+            cancelButtonColor:  _cssVar('--swal-cancel'),
             confirmButtonText: 'Ya, Lanjutkan',
             cancelButtonText: 'Batal',
-            background: document.documentElement.classList.contains('dark') ? '#1e293b' : '#ffffff',
-            color: document.documentElement.classList.contains('dark') ? '#f1f5f9' : '#0f172a',
-            backdrop: 'rgba(0,0,0,0.5)'
+            background: _cssVar('--swal-bg'),
+            color:      _cssVar('--swal-text'),
+            backdrop:   _cssVar('--swal-backdrop'),
         });
         return result.isConfirmed;
     },
@@ -87,12 +97,12 @@ window.Utils = {
             showCancelButton: !!cancelBtn,
             showConfirmButton: !!primaryBtn,
             confirmButtonText: primaryBtn?.text || 'Simpan',
-            cancelButtonText: cancelBtn?.text || 'Batal',
-            confirmButtonColor: '#2563eb',
-            cancelButtonColor: '#64748b',
-            background: document.documentElement.classList.contains('dark') ? '#1e293b' : '#ffffff',
-            color: document.documentElement.classList.contains('dark') ? '#f1f5f9' : '#0f172a',
-            backdrop: 'rgba(0,0,0,0.5)',
+            cancelButtonText:  cancelBtn?.text  || 'Batal',
+            confirmButtonColor: _cssVar('--swal-confirm'),
+            cancelButtonColor:  _cssVar('--swal-cancel'),
+            background: _cssVar('--swal-bg'),
+            color:      _cssVar('--swal-text'),
+            backdrop:   _cssVar('--swal-backdrop'),
             preConfirm: () => {
                 if (window._modalAction === 'cancel') window._modalAction = primaryBtn?.action || 'save';
                 const btn = (options.buttons || []).find(b => b.action === window._modalAction);
@@ -105,28 +115,23 @@ window.Utils = {
         return action;
     },
     async showPrompt(message, defaultValue = '') {
-        let inputValue = null;
         const result = await Swal.fire({
             title: message,
             input: 'text',
             inputValue: defaultValue,
             showCancelButton: true,
-            confirmButtonColor: '#2563eb',
-            cancelButtonColor: '#64748b',
+            confirmButtonColor: _cssVar('--swal-confirm'),
+            cancelButtonColor:  _cssVar('--swal-cancel'),
             confirmButtonText: 'OK',
             cancelButtonText: 'Batal',
-            background: document.documentElement.classList.contains('dark') ? '#1e293b' : '#ffffff',
-            color: document.documentElement.classList.contains('dark') ? '#f1f5f9' : '#0f172a',
-            backdrop: 'rgba(0,0,0,0.5)',
+            background: _cssVar('--swal-bg'),
+            color:      _cssVar('--swal-text'),
+            backdrop:   _cssVar('--swal-backdrop'),
             inputValidator: (value) => {
-                if (!value) {
-                    return 'Input tidak boleh kosong';
-                }
+                if (!value) return 'Input tidak boleh kosong';
             }
         });
-        if (result.isConfirmed) {
-            return result.value;
-        }
+        if (result.isConfirmed) return result.value;
         return null;
     }
 };
