@@ -19,6 +19,17 @@
   --shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
   --shadow-toast: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
   --transition: all 0.2s ease;
+  /* ── SweetAlert / Utils colors ── */
+  --swal-bg: #ffffff;
+  --swal-text: #0f172a;
+  --swal-backdrop: rgba(0,0,0,0.5);
+  --swal-confirm: #2563eb;
+  --swal-cancel: #64748b;
+  --toast-success-bg: #10b981;
+  --toast-warning-bg: #f59e0b;
+  --toast-error-bg: #ef4444;
+  --toast-info-bg: #3b82f6;
+  --toast-text: #ffffff;
 }
 
 .dark {
@@ -52,6 +63,9 @@
   --dk-stat-cash: #075985;
   --dk-stat-qris: #5b21b6;
   --dk-indicator-green: #22c55e;
+  /* ── SweetAlert / Utils colors ── */
+  --swal-bg: #1e293b;
+  --swal-text: #f1f5f9;
 }
 
 
