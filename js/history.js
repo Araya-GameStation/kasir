@@ -1,225 +1,230 @@
+let lastHistoryScrollPosition = 0;
+
 function renderHistory() {
-  if (!state.currentSession) {
-    renderNoSession();
-    return;
-  }
+    if (!state.currentSession) {
+        renderNoSession();
+        return;
+    }
 
-  state.currentView = "history";
+    const mainContent = document.querySelector('main');
+    if (mainContent) {
+        lastHistoryScrollPosition = mainContent.scrollTop;
+    }
 
-  const totalIncome = state.transactions.reduce((sum, t) => sum + t.total, 0);
-  const totalTransaksi = state.transactions.length;
-  const totalCASH = state.transactions.reduce((sum, t) => sum + (t.cashAmount || (t.metodeBayar === 'tunai' ? t.total : 0)), 0);
-  const totalQRIS = state.transactions.reduce((sum, t) => sum + (t.qrisAmount || (t.metodeBayar === 'qris' ? t.total : 0)), 0);
-
-  const recap = {};
-  state.transactions.forEach(t => t.items.forEach(i => {
-    if (!recap[i.name]) recap[i.name] = { qty: 0, total: 0 };
-    recap[i.name].qty += i.qty;
-    recap[i.name].total += i.price * i.qty;
-  }));
-
-  app.innerHTML = `
-    <div class="pos-container">
-      ${getSidebarHTML()}
-      <main class="main-content smart-layout">
-        <div class="smart-header">
-          <div class="session-header">
-            <span class="session-badge">SHIFT ${state.currentSession.shift}</span>
-            <span>Buka: ${new Date(state.currentSession.waktuBuka.seconds * 1000).toLocaleString('id-ID')}</span>
-          </div>
-          
-          <div class="stats-grid">
-            <div class="stat-card">
-              <div class="stat-label">Total Penjualan</div>
-              <div class="stat-value">Rp ${formatRupiah(totalIncome)}</div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-label">Transaksi</div>
-              <div class="stat-value">${totalTransaksi}</div>
-            </div>
-            <div class="stat-card cash">
-              <div class="stat-label">CASH</div>
-              <div class="stat-value">Rp ${formatRupiah(totalCASH)}</div>
-            </div>
-            <div class="stat-card qris">
-              <div class="stat-label">QRIS</div>
-              <div class="stat-value">Rp ${formatRupiah(totalQRIS)}</div>
-            </div>
-          </div>
-          
-          <div class="recap-section">
-            <h3><i class="fas fa-chart-bar"></i> Rekap Produk</h3>
-            <div class="recap-scroll-container">
-              <div class="recap-grid scrollable">
-                ${Object.keys(recap).length === 0 ?
-      '<p class="text-muted">Belum ada data</p>' :
-      Object.keys(recap).sort().map(name => `
-                  <div class="recap-item">
-                    <div class="recap-name">${name}</div>
-                    <div class="recap-detail">
-                      <span>${recap[name].qty} pcs</span>
-                      <span>Rp ${formatRupiah(recap[name].total)}</span>
-                    </div>
-                  </div>
-                `).join('')}
-              </div>
-            </div>
-          </div>
-          
-          <div class="action-buttons">
-            <button class="btn btn-secondary" onclick="toggleSelectAll()">
-              ${state.selectedHistory.size === state.transactions.length ? 'Batal Pilih' : 'Pilih Semua'}
-            </button>
-            <button class="btn btn-secondary ${state.selectedHistory.size > 0 ? 'btn-danger' : ''}" 
-                    onclick="deleteSelected()" ${state.selectedHistory.size === 0 ? 'disabled' : ''}>
-              <i class="fas fa-trash"></i> Hapus ${state.selectedHistory.size > 0 ? `(${state.selectedHistory.size})` : ''}
-            </button>
-            <button class="btn btn-warning" onclick="cetakRekapSesi()">
-              <i class="fas fa-print"></i> Cetak
-            </button>
-          </div>
+    state.currentView = "history";
+    const totalIncome = state.transactions.reduce((sum, t) => sum + t.total, 0);
+    const totalTransaksi = state.transactions.length;
+    const totalCASH = state.transactions.reduce((sum, t) => sum + (t.cashAmount || (t.metodeBayar === 'tunai' ? t.total : 0)), 0);
+    const totalQRIS = state.transactions.reduce((sum, t) => sum + (t.qrisAmount || (t.metodeBayar === 'qris' ? t.total : 0)), 0);
+    const recap = {};
+    state.transactions.forEach(t => t.items.forEach(i => {
+        if (!recap[i.name]) recap[i.name] = { qty: 0, total: 0 };
+        recap[i.name].qty += i.qty;
+        recap[i.name].total += i.price * i.qty;
+    }));
+    const sortedTransactions = SortableTable.sort(state.transactions, 'transactions');
+    const content = `
+    <div class="stack-y">
+      <div class="session-header">
+        <span class="session-badge">SHIFT ${state.currentSession.shift}</span>
+        <span>Buka: ${new Date(state.currentSession.waktuBuka.seconds * 1000).toLocaleString('id-ID')}</span>
+      </div>
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-label">Total Penjualan</div>
+          <div class="stat-value">Rp ${Utils.formatRupiah(totalIncome)}</div>
         </div>
-        
-        <div class="smart-scroll">
-          <h3><i class="fas fa-history"></i> Riwayat Transaksi</h3>
-          
-          ${state.transactions.length === 0 ?
-      '<p class="text-center text-muted">Belum ada transaksi</p>' :
-      state.transactions.map(t => {
-        const tgl = new Date(t.date.seconds ? t.date.seconds * 1000 : t.date);
-        return `
-                <div class="transaction-card">
-                  <div class="transaction-header">
-                    <div class="transaction-info">
-                      <input type="checkbox" ${state.selectedHistory.has(t.id) ? 'checked' : ''} 
-                             onchange="toggleSelect('${t.id}')" onclick="event.stopPropagation()">
-                      <div>
-                        <div class="transaction-time">${tgl.toLocaleTimeString('id-ID')} ${t.mejaNama ? `• ${t.mejaNama}` : ''}</div>
-                        <div class="transaction-meta">${t.items.length} item • ${t.metodeBayar === 'tunai' ? 'CASH' : t.metodeBayar === 'qris' ? 'QRIS' : 'CAMPUR'}</div>
-                      </div>
-                    </div>
-                    <div class="transaction-amount">
-                      <div class="transaction-total">Rp ${formatRupiah(t.total)}</div>
-                      <div class="transaction-actions">
-                        <button class="btn btn-icon" onclick="showDetailModal('${t.id}'); event.stopPropagation()">
-                          <i class="fas fa-eye"></i>
-                        </button>
-                        <button class="btn btn-icon" onclick="reprintReceipt('${t.id}'); event.stopPropagation()">
-                          <i class="fas fa-print"></i>
-                        </button>
-                      </div>
-                    </div>
+        <div class="stat-card">
+          <div class="stat-label">Transaksi</div>
+          <div class="stat-value">${totalTransaksi}</div>
+        </div>
+        <div class="stat-card cash">
+          <div class="stat-label">CASH</div>
+          <div class="stat-value">Rp ${Utils.formatRupiah(totalCASH)}</div>
+        </div>
+        <div class="stat-card qris">
+          <div class="stat-label">QRIS</div>
+          <div class="stat-value">Rp ${Utils.formatRupiah(totalQRIS)}</div>
+        </div>
+      </div>
+      <div class="recap-section">
+        <h3><i class="fas fa-chart-bar"></i> Rekap Produk</h3>
+        <div class="recap-scroll-container">
+          <div class="recap-grid scrollable">
+            ${Object.keys(recap).length === 0 ?
+            '<p class="text-muted">Belum ada data</p>' :
+            Object.keys(recap).sort().map(name => `
+                <div class="recap-item">
+                  <div class="recap-name">${name}</div>
+                  <div class="recap-detail">
+                    <span>${recap[name].qty} pcs</span>
+                    <span>Rp ${Utils.formatRupiah(recap[name].total)}</span>
                   </div>
-                  
-                  ${state.expandedHistory === t.id ? `
-                    <div class="transaction-detail">
-                      <div class="detail-grid">
-                        <div><i class="fas fa-money-bill-wave"></i> CASH: Rp ${formatRupiah(t.cashAmount || (t.metodeBayar === 'tunai' ? t.total : 0))}</div>
-                        <div><i class="fas fa-qrcode"></i> QRIS: Rp ${formatRupiah(t.qrisAmount || (t.metodeBayar === 'qris' ? t.total : 0))}</div>
-                        <div><i class="fas fa-calculator"></i> Total: Rp ${formatRupiah(t.total)}</div>
-                        <div><i class="fas fa-credit-card"></i> Bayar: Rp ${formatRupiah(t.paid)}</div>
-                      </div>
-                    </div>
-                  ` : ''}
                 </div>
-              `;
-      }).join('')}
-        </div>
-      </main>
-    </div>
-  `;
-}
-
-function showDetailModal(trxId) {
-  const trx = state.transactions.find(t => t.id === trxId);
-  if (!trx) return;
-
-  const tgl = new Date(trx.date.seconds ? trx.date.seconds * 1000 : trx.date);
-
-  const itemsHTML = trx.items.map((item, index) => `
-    <tr>
-      <td style="padding: 8px 0;">${index + 1}</td>
-      <td style="padding: 8px 0;">${item.name}</td>
-      <td style="padding: 8px 0; text-align: center;">${item.qty}</td>
-      <td style="padding: 8px 0; text-align: right;">Rp ${formatRupiah(item.price)}</td>
-      <td style="padding: 8px 0; text-align: right; font-weight: 600;">Rp ${formatRupiah(item.price * item.qty)}</td>
-    </tr>
-  `).join('');
-
-  const modal = document.createElement('div');
-  modal.className = 'modal-overlay';
-  modal.innerHTML = `
-    <div class="modal modal-lg" style="max-width: 700px;">
-      <h3><i class="fas fa-receipt"></i> Detail Transaksi</h3>
-      
-      <div style="background: #f8fafc; border-radius: 12px; padding: 16px; margin-bottom: 20px;">
-        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px;">
-          <div>
-            <div style="color: var(--text-light); font-size: 12px;">Tanggal</div>
-            <div style="font-weight: 600;">${tgl.toLocaleDateString('id-ID')}</div>
-          </div>
-          <div>
-            <div style="color: var(--text-light); font-size: 12px;">Waktu</div>
-            <div style="font-weight: 600;">${tgl.toLocaleTimeString('id-ID')}</div>
-          </div>
-          <div>
-            <div style="color: var(--text-light); font-size: 12px;">Kasir</div>
-            <div style="font-weight: 600;">${trx.kasir}</div>
-          </div>
-          <div>
-            <div style="color: var(--text-light); font-size: 12px;">Meja</div>
-            <div style="font-weight: 600;">${trx.mejaNama || 'Take Away'}</div>
+              `).join('')}
           </div>
         </div>
       </div>
-      
-      <h4 style="margin-bottom: 12px;">🛒 Daftar Pesanan</h4>
-      
-      <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+      <div class="action-buttons">
+        <button class="btn btn-secondary" onclick="toggleSelectAll()">
+          ${state.selectedHistory.size === state.transactions.length ? 'Batal Pilih' : 'Pilih Semua'}
+        </button>
+        <button class="btn btn-secondary ${state.selectedHistory.size > 0 ? 'btn-danger' : ''}" 
+                onclick="deleteSelected()" ${state.selectedHistory.size === 0 ? 'disabled' : ''}>
+          <i class="fas fa-trash"></i> Hapus ${state.selectedHistory.size > 0 ? `(${state.selectedHistory.size})` : ''}
+        </button>
+        <button class="btn btn-warning" onclick="cetakRekapSesi()">
+          <i class="fas fa-print"></i> Cetak
+        </button>
+      </div>
+      <h3><i class="fas fa-history"></i> Riwayat Transaksi</h3>
+      ${state.transactions.length === 0 ?
+            '<p class="text-center text-muted">Belum ada transaksi</p>' :
+            `<table class="w-full">
+        <thead class="bg-slate-100 dark:bg-slate-700">
+          <tr>
+            <th class="p-3 text-left cursor-pointer" onclick="sortTransactions('date')">
+              Waktu <i class="fas ${SortableTable.getSortIcon('transactions', 'date')}"></i>
+            </th>
+            <th class="p-3 text-left cursor-pointer" onclick="sortTransactions('mejaNama')">
+              Meja <i class="fas ${SortableTable.getSortIcon('transactions', 'mejaNama')}"></i>
+            </th>
+            <th class="p-3 text-left cursor-pointer" onclick="sortTransactions('total')">
+              Total <i class="fas ${SortableTable.getSortIcon('transactions', 'total')}"></i>
+            </th>
+            <th class="p-3 text-left">Aksi</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${sortedTransactions.map(t => {
+                const tgl = new Date(t.date.seconds ? t.date.seconds * 1000 : t.date);
+                return `
+              <tr class="border-b dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800">
+                <td class="p-3">
+                  <input type="checkbox" ${state.selectedHistory.has(t.id) ? 'checked' : ''} 
+                         onchange="toggleSelect('${t.id}')" onclick="event.stopPropagation()">
+                  <span class="ml-2">${tgl.toLocaleTimeString('id-ID')}</span>
+                </td>
+                <td class="p-3">${t.mejaNama || 'Take Away'}</td>
+                <td class="p-3 font-bold text-primary-600">Rp ${Utils.formatRupiah(t.total)}</td>
+                <td class="p-3">
+                  <button class="btn btn-icon-sm" onclick="showDetailModal('${t.id}'); event.stopPropagation()">
+                    <i class="fas fa-eye"></i>
+                  </button>
+                  <button class="btn btn-icon-sm" onclick="reprintReceipt('${t.id}'); event.stopPropagation()">
+                    <i class="fas fa-print"></i>
+                  </button>
+                </td>
+              </tr>
+            `;
+            }).join('')}
+        </tbody>
+      </table>`}
+    </div>
+  `;
+    app.innerHTML = Layout.renderMain(content);
+
+    requestAnimationFrame(() => {
+        const newMainContent = document.querySelector('main');
+        if (newMainContent && lastHistoryScrollPosition > 0) {
+            newMainContent.scrollTop = lastHistoryScrollPosition;
+        }
+    });
+}
+
+function showDetailModal(trxId) {
+    const mainContent = document.querySelector('main');
+    if (mainContent) {
+        lastHistoryScrollPosition = mainContent.scrollTop;
+    }
+
+    const trx = state.transactions.find(t => t.id === trxId);
+    if (!trx) return;
+    const tgl = new Date(trx.date.seconds ? trx.date.seconds * 1000 : trx.date);
+
+    const itemsHTML = trx.items.map((item, index) => `
+    <tr>
+      <td>${index + 1}</td>
+      <td>${item.name}</td>
+      <td class="text-center">${item.qty}</td>
+      <td class="text-right">Rp ${Utils.formatRupiah(item.price)}</td>
+      <td class="text-right td-bold">Rp ${Utils.formatRupiah(item.price * item.qty)}</td>
+    </tr>
+  `).join('');
+
+    const modal = document.createElement('div');
+    modal.className = 'modal-overlay';
+    modal.innerHTML = `
+    <div class="modal modal-lg modal-detail-trx">
+      <h3><i class="fas fa-receipt"></i> Detail Transaksi</h3>
+
+      <div class="trx-info-box">
+        <div class="trx-info-grid">
+          <div>
+            <div class="trx-info-label">Tanggal</div>
+            <div class="trx-info-value">${tgl.toLocaleDateString('id-ID')}</div>
+          </div>
+          <div>
+            <div class="trx-info-label">Waktu</div>
+            <div class="trx-info-value">${tgl.toLocaleTimeString('id-ID')}</div>
+          </div>
+          <div>
+            <div class="trx-info-label">Kasir</div>
+            <div class="trx-info-value">${trx.kasir}</div>
+          </div>
+          <div>
+            <div class="trx-info-label">Meja</div>
+            <div class="trx-info-value">${trx.mejaNama || 'Take Away'}</div>
+          </div>
+        </div>
+      </div>
+
+      <h4 class="section-title-sm">🛒 Daftar Pesanan</h4>
+      <table class="detail-table">
         <thead>
-          <tr style="border-bottom: 2px solid var(--border);">
-            <th style="text-align: left; padding: 8px 0;">No</th>
-            <th style="text-align: left; padding: 8px 0;">Menu</th>
-            <th style="text-align: center; padding: 8px 0;">Qty</th>
-            <th style="text-align: right; padding: 8px 0;">Harga</th>
-            <th style="text-align: right; padding: 8px 0;">Subtotal</th>
+          <tr>
+            <th>No</th>
+            <th>Menu</th>
+            <th class="text-center">Qty</th>
+            <th class="text-right">Harga</th>
+            <th class="text-right">Subtotal</th>
           </tr>
         </thead>
         <tbody>
           ${itemsHTML}
         </tbody>
         <tfoot>
-          <tr style="border-top: 2px solid var(--border);">
-            <td colspan="4" style="text-align: right; padding: 12px 0; font-weight: 600;">Total</td>
-            <td style="text-align: right; padding: 12px 0; font-weight: 700; color: var(--primary);">Rp ${formatRupiah(trx.total)}</td>
+          <tr class="tfoot-total">
+            <td colspan="4" class="text-right td-bold">Total</td>
+            <td class="text-right td-total-value">Rp ${Utils.formatRupiah(trx.total)}</td>
           </tr>
           <tr>
-            <td colspan="4" style="text-align: right; padding: 4px 0;">Bayar</td>
-            <td style="text-align: right; padding: 4px 0;">Rp ${formatRupiah(trx.paid)}</td>
+            <td colspan="4" class="text-right">Bayar</td>
+            <td class="text-right">Rp ${Utils.formatRupiah(trx.paid)}</td>
           </tr>
           <tr>
-            <td colspan="4" style="text-align: right; padding: 4px 0;">Kembalian</td>
-            <td style="text-align: right; padding: 4px 0; color: ${trx.change >= 0 ? 'var(--success)' : 'var(--danger)'};">Rp ${formatRupiah(trx.change)}</td>
+            <td colspan="4" class="text-right">Kembalian</td>
+            <td class="text-right ${trx.change >= 0 ? 'text-success' : 'text-danger'}">Rp ${Utils.formatRupiah(trx.change)}</td>
           </tr>
         </tfoot>
       </table>
-      
-      <div style="background: #f1f5f9; border-radius: 8px; padding: 12px; margin-bottom: 20px;">
-        <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+
+      <div class="payment-info-box">
+        <div class="payment-info-row">
           <span>Metode Pembayaran:</span>
-          <span style="font-weight: 600; background: var(--primary); color: white; padding: 4px 12px; border-radius: 20px;">
+          <span class="method-badge">
             ${trx.metodeBayar === 'tunai' ? 'CASH' : trx.metodeBayar === 'qris' ? 'QRIS' : 'CASH + QRIS'}
           </span>
         </div>
         ${trx.metodeBayar === 'mixed' ? `
-          <div style="display: flex; justify-content: space-between; font-size: 13px; margin-top: 8px;">
-            <span>💵 CASH: Rp ${formatRupiah(trx.cashAmount || 0)}</span>
-            <span>📱 QRIS: Rp ${formatRupiah(trx.qrisAmount || 0)}</span>
+          <div class="payment-info-mixed">
+            <span>💵 CASH: Rp ${Utils.formatRupiah(trx.cashAmount || 0)}</span>
+            <span>📱 QRIS: Rp ${Utils.formatRupiah(trx.qrisAmount || 0)}</span>
           </div>
         ` : ''}
       </div>
-      
-      <div style="display: flex; gap: 12px; justify-content: flex-end;">
+
+      <div class="modal-footer-actions">
         <button class="btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">Tutup</button>
         <button class="btn btn-primary" onclick="reprintReceipt('${trx.id}'); this.closest('.modal-overlay').remove()">
           <i class="fas fa-print"></i> Cetak Ulang
@@ -227,58 +232,93 @@ function showDetailModal(trxId) {
       </div>
     </div>
   `;
-
-  document.body.appendChild(modal);
+    document.body.appendChild(modal);
 }
 
-function toggleDetail(id) {
-  state.expandedHistory = state.expandedHistory === id ? null : id;
-  renderHistory();
+function sortTransactions(field) {
+    const mainContent = document.querySelector('main');
+    if (mainContent) {
+        lastHistoryScrollPosition = mainContent.scrollTop;
+    }
+    SortableTable.toggle('transactions', field);
+    renderHistory();
 }
 
 function toggleSelect(id) {
-  if (state.selectedHistory.has(id)) state.selectedHistory.delete(id);
-  else state.selectedHistory.add(id);
-  renderHistory();
+    const mainContent = document.querySelector('main');
+    if (mainContent) {
+        lastHistoryScrollPosition = mainContent.scrollTop;
+    }
+    if (state.selectedHistory.has(id)) state.selectedHistory.delete(id);
+    else state.selectedHistory.add(id);
+    renderHistory();
 }
 
 function toggleSelectAll() {
-  if (state.selectedHistory.size === state.transactions.length) state.selectedHistory.clear();
-  else state.transactions.forEach(t => state.selectedHistory.add(t.id));
-  renderHistory();
+    const mainContent = document.querySelector('main');
+    if (mainContent) {
+        lastHistoryScrollPosition = mainContent.scrollTop;
+    }
+    if (state.selectedHistory.size === state.transactions.length) state.selectedHistory.clear();
+    else state.transactions.forEach(t => state.selectedHistory.add(t.id));
+    renderHistory();
 }
 
 async function deleteSelected() {
-  if (state.selectedHistory.size === 0) return;
-  if (!await showConfirm(`Hapus ${state.selectedHistory.size} transaksi?`)) return;
+    if (state.selectedHistory.size === 0) return;
+    if (!await Utils.showConfirm(`Hapus ${state.selectedHistory.size} transaksi?`)) return;
 
-  try {
-    await Promise.all([...state.selectedHistory].map(id => dbCloud.collection("transactions").doc(id).delete()));
-    state.selectedHistory.clear();
-    showToast(`${state.selectedHistory.size} transaksi dihapus`);
-    renderHistory();
-  } catch (error) {
-    showToast("Gagal: " + error.message, 'error');
-  }
+    const mainContent = document.querySelector('main');
+    if (mainContent) {
+        lastHistoryScrollPosition = mainContent.scrollTop;
+    }
+
+    try {
+        const jumlah = state.selectedHistory.size;
+        await Promise.all([...state.selectedHistory].map(id => dbCloud.collection("transactions").doc(id).delete()));
+        state.selectedHistory.clear();
+        Utils.showToast(`${jumlah} transaksi dihapus`);
+        renderHistory();
+    } catch (error) {
+        Utils.showToast("Gagal: " + error.message, 'error');
+    }
 }
 
 async function reprintReceipt(trxId) {
-  const trx = state.transactions.find(t => t.id === trxId);
-  if (!trx) return;
-  if (typeof window.printStruk === 'function') await window.printStruk(trx);
+    const mainContent = document.querySelector('main');
+    if (mainContent) {
+        lastHistoryScrollPosition = mainContent.scrollTop;
+    }
+    try {
+        const trx = state.transactions.find(t => t.id === trxId);
+        if (!trx) return;
+        if (typeof window.printStruk === 'function') await window.printStruk(trx);
+    } catch (error) {
+        console.error('reprintReceipt error:', error);
+        Utils.showToast('Gagal cetak ulang: ' + error.message, 'error');
+    }
 }
 
 async function cetakRekapSesi() {
-  if (typeof window.printRekapSesi === 'function') {
-    await window.printRekapSesi(state.currentSession, state.transactions);
-  }
+    const mainContent = document.querySelector('main');
+    if (mainContent) {
+        lastHistoryScrollPosition = mainContent.scrollTop;
+    }
+    try {
+        if (typeof window.printRekapSesi === 'function') {
+            await window.printRekapSesi(state.currentSession, state.transactions);
+        }
+    } catch (error) {
+        console.error('cetakRekapSesi error:', error);
+        Utils.showToast('Gagal cetak rekap: ' + error.message, 'error');
+    }
 }
 
 window.renderHistory = renderHistory;
-window.toggleDetail = toggleDetail;
+window.showDetailModal = showDetailModal;
+window.sortTransactions = sortTransactions;
 window.toggleSelect = toggleSelect;
 window.toggleSelectAll = toggleSelectAll;
 window.deleteSelected = deleteSelected;
 window.reprintReceipt = reprintReceipt;
 window.cetakRekapSesi = cetakRekapSesi;
-window.showDetailModal = showDetailModal;

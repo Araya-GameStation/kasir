@@ -1,22 +1,7 @@
-function hitungStokProduk(produk) {
-  if (!produk.resep || produk.resep.length === 0) {
-    return produk.useStock ? produk.stock : null;
-  }
-  
-  let maxPorsi = Infinity;
-  
-  for (const bahan of produk.resep) {
-    const bahanData = state.rawMaterials.find(b => b.id === bahan.bahanId);
-    if (!bahanData) {
-      return 0;
-    }
-    
-    const porsiDariBahan = Math.floor(bahanData.stock / bahan.qty);
-    maxPorsi = Math.min(maxPorsi, porsiDariBahan);
-  }
-  
-  return maxPorsi;
-}
+let lastScrollPosition = 0;
+let lastCategoryScrollPosition = 0;
+let _isAnimating = false;
+let _initialRender = true;
 
 function renderKasir() {
   state.currentView = "kasir";
@@ -24,7 +9,17 @@ function renderKasir() {
     renderNoSession();
     return;
   }
-  
+
+  const menuContainer = document.getElementById('menu-scroll-container');
+  if (menuContainer) {
+    lastScrollPosition = menuContainer.scrollTop;
+  }
+
+  const categoryContainer = document.getElementById('category-scroll-container');
+  if (categoryContainer && categoryContainer.parentElement) {
+    lastCategoryScrollPosition = categoryContainer.parentElement.scrollLeft;
+  }
+
   const sortedCategories = [
     ...state.categories.filter(c => !c.system).sort((a, b) => a.name.localeCompare(b.name)),
     ...state.categories.filter(c => c.system)
@@ -35,156 +30,193 @@ function renderKasir() {
     return cat && cat.name === state.selectedCategory;
   })).sort((a, b) => a.name.localeCompare(b.name));
 
-  app.innerHTML = `
-    <div class="pos-container">
-      ${getSidebarHTML()}
-      
-      <main class="main-content smart-layout">
-        <div class="smart-header">
-          <div class="session-header">
-            <div>
-              <span class="session-badge">
-                <i class="fas fa-clock"></i> SHIFT ${state.currentSession.shift}
-              </span>
-              <span><i class="fas fa-user"></i> ${state.currentSession.kasir}</span>
-            </div>
-            <button class="btn btn-secondary" onclick="tutupShift()">
-              <i class="fas fa-sign-out-alt"></i> Tutup
-            </button>
-          </div>
-          
-          <div class="category-header">
+  const content = `
+    <div style="display:flex;gap:24px;height:calc(100vh - 5rem);">
+      <div style="flex:1;display:flex;flex-direction:column;min-width:0;overflow:hidden;">
+        <div class="sticky top-0 z-10 smart-header rounded-xl">
+          <div class="flex gap-2" id="category-scroll-container">
             ${categoryNames.map(c => `
-              <button class="category-btn ${state.selectedCategory === c ? 'active' : ''}" 
-                      onclick="selectCategory('${c}')">${c}</button>
+              <button onclick="selectCategory('${c}')"
+                      class="category-btn ${state.selectedCategory === c ? 'active' : ''}">
+                ${c}
+              </button>
             `).join('')}
           </div>
         </div>
-        
-        <div class="smart-scroll">
-          <div class="menu-grid">
-            ${filteredMenus.map(m => {
-              const stockOk = cekKetersediaanBahan(m);
-              const stokOtomatis = m.resep ? hitungStokProduk(m) : null;
-              const stokTersedia = stokOtomatis !== null ? stokOtomatis : (m.useStock ? m.stock : null);
-              
-              return `
-                <div class="card ${!stockOk.ok ? 'product-disabled' : ''}" onclick="addToCart('${m.id}')">
-                  <div class="card-title">${m.name}</div>
-                  <div class="card-price">Rp ${formatRupiah(m.price)}</div>
-                  ${!stockOk.ok ? 
-                    `<div class="card-stock text-danger">
-                      <i class="fas fa-exclamation-circle"></i> 
-                      ${stockOk.kurang}
-                    </div>` : 
-                    stokTersedia !== null ? 
-                    `<div class="card-stock">
-                      <i class="fas ${m.resep ? 'fa-cubes' : 'fa-box'}"></i> 
-                      Stok: ${stokTersedia} ${m.resep ? 'porsi' : ''}
-                    </div>` : 
-                    `<div class="card-stock text-muted">
-                      <i class="fas fa-infinity"></i>
-                    </div>`
-                  }
-                </div>
-              `;
-            }).join('')}
+        <div class="menu-scroll-container" id="menu-scroll-container">
+          <div class="menu-grid" id="menu-grid-container">
+            ${filteredMenus.map(m => renderMenuItem(m)).join('')}
           </div>
         </div>
-      </main>
+      </div>
+      <div style="width:384px;flex-shrink:0;">
+        <div class="checkout-panel" style="border-radius:12px;height:calc(100vh - 5rem);display:flex;flex-direction:column;">
+          <div class="panel-header-inner p-4 border-b">
+            <div class="flex items-center justify-between">
+              <h3 class="font-semibold text-lg">
+                <i class="fas fa-shopping-cart text-primary-600 mr-2"></i>
+                Pesanan
+              </h3>
+              <span class="nav-badge">
+                ${state.cart.length}
+              </span>
+            </div>
+          </div>
+          <div style="flex:1;overflow-y:auto;padding:16px;">
+            ${renderCartItems()}
+          </div>
+          <div class="panel-footer rounded-b-xl p-4">
+            ${renderCartFooter()}
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  app.innerHTML = Layout.renderMain(content);
+
+  requestAnimationFrame(() => {
+    const newMenuContainer = document.getElementById('menu-scroll-container');
+    if (newMenuContainer && lastScrollPosition > 0) {
+      newMenuContainer.scrollTop = lastScrollPosition;
+    }
+
+    const newCategoryParent = document.getElementById('category-scroll-container')?.parentElement;
+    if (newCategoryParent && lastCategoryScrollPosition > 0) {
+      newCategoryParent.scrollLeft = lastCategoryScrollPosition;
+    }
+  });
+
+  if (_initialRender) {
+    anime({
+      targets: '.card',
+      opacity: [0, 1],
+      translateY: [20, 0],
+      delay: anime.stagger(50),
+      duration: 500,
+      easing: 'easeOutQuad'
+    });
+    _initialRender = false;
+  } else {
+    document.querySelectorAll('.card').forEach(card => {
+      card.classList.add('no-animation');
       
-      <aside class="checkout-panel">
-        <div class="panel-header">
-          <span><i class="fas fa-shopping-cart"></i> Pesanan</span>
-          <span class="badge bg-primary">${state.cart.length}</span>
-        </div>
-        
-        <div class="panel-scroll">
-          ${state.cart.length === 0 ? `
-            <div class="empty-state">
-              <i class="fas fa-shopping-basket"></i>
-              <p>Belum ada pesanan</p>
-            </div>
-          ` : state.cart.map(i => `
-            <div class="cart-item">
-              <div>
-                <div class="cart-item-name">${i.name}</div>
-                <div class="cart-item-price">Rp ${formatRupiah(i.price)} x ${i.qty}</div>
-              </div>
-              <div class="cart-item-total">Rp ${formatRupiah(i.price * i.qty)}</div>
-              <div class="qty-control">
-                <button class="qty-btn" onclick="changeQty('${i.id}',-1)"><i class="fas fa-minus"></i></button>
-                <span>${i.qty}</span>
-                <button class="qty-btn" onclick="changeQty('${i.id}',1)"><i class="fas fa-plus"></i></button>
-              </div>
-            </div>
-          `).join('')}
-        </div>
-        
-        <div class="panel-footer">
-          <div class="table-info">
-            <div><i class="fas fa-chair"></i> ${state.selectedTable ? `${state.selectedTable.nomor} - ${state.selectedTable.nama}` : 'Pilih meja'}</div>
-            <button class="btn btn-secondary btn-sm" onclick="pilihMeja()">Ganti</button>
-          </div>
+      
+    });
+  }
+}
 
-          <div class="total-row">
-            <span>Total</span>
-            <span class="total-amount">Rp ${formatRupiah(getTotal())}</span>
-          </div>
+function renderNoSession() {
+  app.innerHTML = Layout.renderMain(`
+    <div class="flex items-center justify-center h-full">
+      <div class="empty-state large">
+        <i class="fas fa-lock"></i>
+        <h2>Tidak Ada Shift Aktif</h2>
+        <p>Buka shift untuk memulai transaksi</p>
+        <button class="btn btn-primary" onclick="bukaShift()">BUKA SHIFT</button>
+      </div>
+    </div>
+  `);
+}
 
-          <div class="method-info">
-            <span>Metode</span>
-            <span class="method-badge">
-              ${state.selectedPaymentMethod === 'tunai' ? 'CASH' : 
-                state.selectedPaymentMethod === 'qris' ? 'QRIS' : 'CASH + QRIS'}
-            </span>
-          </div>
-
-          <button class="btn btn-primary btn-block btn-large" 
-                  onclick="showPaymentModal()" ${!state.selectedTable ? 'disabled' : ''}>
-            <i class="fas fa-credit-card"></i> BAYAR (Rp ${formatRupiah(getTotal())})
-          </button>
-        </div>
-      </aside>
+function renderMenuItem(m) {
+  const stockOk = cekKetersediaanBahan(m);
+  const stokOtomatis = m.resep ? Utils.hitungStokProduk(m) : null;
+  const stokTersedia = stokOtomatis !== null ? stokOtomatis : (m.useStock ? m.stock : null);
+  return `
+    <div class="card hover-scale ${!stockOk.ok ? 'product-disabled' : ''}" onclick="addToCart('${m.id}')">
+      <div class="card-title">${m.name}</div>
+      <div class="card-price">Rp ${Utils.formatRupiah(m.price)}</div>
+      ${!stockOk.ok ?
+      `<div class="card-stock text-danger">
+          <i class="fas fa-exclamation-circle"></i> 
+          ${stockOk.kurang}
+        </div>` :
+      stokTersedia !== null ?
+        `<div class="card-stock">
+          <i class="fas ${m.resep ? 'fa-cubes' : 'fa-box'}"></i> 
+          Stok: ${stokTersedia} ${m.resep ? 'porsi' : ''}
+        </div>` :
+        `<div class="card-stock text-muted">
+          <i class="fas fa-infinity"></i>
+        </div>`
+    }
     </div>
   `;
 }
 
-function renderNoSession() {
-  app.innerHTML = `
-    <div class="pos-container">
-      ${getSidebarHTML()}
-      <main class="main-content flex-center">
-        <div class="empty-state large">
-          <i class="fas fa-lock"></i>
-          <h2>Tidak Ada Shift Aktif</h2>
-          <p>Buka shift untuk memulai transaksi</p>
-          <button class="btn btn-primary" onclick="bukaShift()">BUKA SHIFT</button>
-        </div>
-      </main>
+function renderCartItems() {
+  if (state.cart.length === 0) {
+    return `
+      <div class="empty-state">
+        <i class="fas fa-shopping-basket"></i>
+        <p>Belum ada pesanan</p>
+      </div>
+    `;
+  }
+  return state.cart.map(i => `
+    <div class="cart-item">
+      <div>
+        <div class="cart-item-name">${i.name}</div>
+        <div class="cart-item-price">Rp ${Utils.formatRupiah(i.price)} x ${i.qty}</div>
+      </div>
+      <div class="cart-item-total">Rp ${Utils.formatRupiah(i.price * i.qty)}</div>
+      <div class="qty-control">
+        <button class="qty-btn" onclick="changeQty('${i.id}',-1)"><i class="fas fa-minus"></i></button>
+        <span>${i.qty}</span>
+        <button class="qty-btn" onclick="changeQty('${i.id}',1)"><i class="fas fa-plus"></i></button>
+      </div>
     </div>
+  `).join('');
+}
+
+function renderCartFooter() {
+  return `
+    <div class="table-info mb-4">
+      <div><i class="fas fa-chair"></i> ${state.selectedTable ? `${state.selectedTable.nomor} - ${state.selectedTable.nama}` : 'Pilih meja'}</div>
+      <button class="btn btn-secondary btn-sm" onclick="pilihMeja()">Ganti</button>
+    </div>
+    <div class="total-row">
+      <span>Total</span>
+      <span class="total-amount">Rp ${Utils.formatRupiah(getTotal())}</span>
+    </div>
+    <div class="method-info">
+      <span>Metode</span>
+      <span class="method-badge">
+        ${state.selectedPaymentMethod === 'tunai' ? 'CASH' :
+      state.selectedPaymentMethod === 'qris' ? 'QRIS' : 'CASH + QRIS'}
+      </span>
+    </div>
+    <button class="btn btn-primary btn-block btn-large" onclick="showPaymentModal()" ${!state.selectedTable ? 'disabled' : ''}>
+      <i class="fas fa-credit-card"></i> BAYAR (Rp ${Utils.formatRupiah(getTotal())})
+    </button>
   `;
 }
 
 function selectCategory(c) {
+  const categoryContainer = document.getElementById('category-scroll-container')?.parentElement;
+  if (categoryContainer) {
+    state.lastCategoryScroll = categoryContainer.scrollLeft;
+  }
+
+  const menuContainer = document.getElementById('menu-scroll-container');
+  if (menuContainer) {
+    state.lastMenuScroll = menuContainer.scrollTop;
+  }
+
   state.selectedCategory = c;
   renderKasir();
 }
 
 function cekKetersediaanBahan(menu, qty = 1) {
   if (!menu.resep || menu.resep.length === 0) return { ok: true };
-  
   for (const bahan of menu.resep) {
     const bahanData = state.rawMaterials.find(b => b.id === bahan.bahanId);
     if (!bahanData) {
       return { ok: false, kurang: `Bahan ${bahan.nama} tidak ditemukan` };
     }
-    
     if (bahanData.stock < (bahan.qty * qty)) {
-      return { 
-        ok: false, 
-        kurang: `${bahan.nama} (butuh ${bahan.qty * qty} ${bahan.satuan})` 
-      };
+      return { ok: false, kurang: `${bahan.nama} (butuh ${bahan.qty * qty} ${bahan.satuan})` };
     }
   }
   return { ok: true };
@@ -193,25 +225,21 @@ function cekKetersediaanBahan(menu, qty = 1) {
 async function addToCart(id) {
   const item = state.menus.find(m => m.id === id);
   if (!item) return;
-  
-  const stokOtomatis = item.resep ? hitungStokProduk(item) : null;
+  const stokOtomatis = item.resep ? Utils.hitungStokProduk(item) : null;
   const stokTersedia = stokOtomatis !== null ? stokOtomatis : (item.useStock ? item.stock : Infinity);
-  
   const stockOk = cekKetersediaanBahan(item);
   if (!stockOk.ok) {
-    showToast(`${stockOk.kurang} tidak cukup!`, 'error');
+    Utils.showToast(`${stockOk.kurang} tidak cukup!`, 'error');
     return;
   }
-  
   if (stokTersedia < 1) {
-    showToast(`Stok ${item.name} habis!`, 'error');
+    Utils.showToast(`Stok ${item.name} habis!`, 'error');
     return;
   }
-  
   const exist = state.cart.find(c => c.id === id);
   if (exist) {
     if (stokTersedia < (exist.qty + 1)) {
-      showToast(`Stok ${item.name} tidak cukup!`, 'error');
+      Utils.showToast(`Stok ${item.name} tidak cukup!`, 'error');
       return;
     }
     exist.qty++;
@@ -224,25 +252,20 @@ async function addToCart(id) {
 function changeQty(id, d) {
   const item = state.cart.find(i => i.id === id);
   if (!item) return;
-  
   const menu = state.menus.find(m => m.id === id);
-  
-  const stokOtomatis = menu.resep ? hitungStokProduk(menu) : null;
+  const stokOtomatis = menu.resep ? Utils.hitungStokProduk(menu) : null;
   const stokTersedia = stokOtomatis !== null ? stokOtomatis : (menu.useStock ? menu.stock : Infinity);
-  
   if (d > 0) {
     const stockOk = cekKetersediaanBahan(menu, item.qty + d);
     if (!stockOk.ok) {
-      showToast(`${stockOk.kurang} tidak cukup!`, 'error');
+      Utils.showToast(`${stockOk.kurang} tidak cukup!`, 'error');
       return;
     }
-    
     if (stokTersedia < (item.qty + d)) {
-      showToast(`Stok ${menu.name} tidak cukup!`, 'error');
+      Utils.showToast(`Stok ${menu.name} tidak cukup!`, 'error');
       return;
     }
   }
-  
   item.qty += d;
   if (item.qty <= 0) state.cart = state.cart.filter(i => i.id !== id);
   renderKasir();
@@ -260,41 +283,6 @@ function setPaymentMethod(method) {
   renderKasir();
 }
 
-window.updateCashAmount = function(value) {
-  const cash = parseInt(value.replace(/\./g, '')) || 0;
-  const total = getTotal();
-  if (state.selectedPaymentMethod === 'tunai') {
-    state.cashAmount = cash;
-  } else if (state.selectedPaymentMethod === 'mixed') {
-    if (cash >= total) { state.cashAmount = total; state.qrisAmount = 0; }
-    else { state.cashAmount = cash; state.qrisAmount = total - cash; }
-  }
-};
-
-window.updateQrisAmount = function(value) {
-  const qris = parseInt(value.replace(/\./g, '')) || 0;
-  const total = getTotal();
-  if (qris > total) { state.qrisAmount = total; state.cashAmount = 0; }
-  else { state.qrisAmount = qris; state.cashAmount = total - qris; }
-};
-
-window.quickCash = function(amount) {
-  if (state.selectedPaymentMethod === 'mixed') {
-    const total = getTotal();
-    if (amount >= total) { state.cashAmount = total; state.qrisAmount = 0; }
-    else { state.cashAmount = amount; state.qrisAmount = total - amount; }
-  } else {
-    state.cashAmount = amount;
-  }
-};
-
-window.quickQris = function(amount) {
-  const total = getTotal();
-  if (amount >= total) { state.qrisAmount = total; state.cashAmount = 0; }
-  else if (amount < 0) { state.qrisAmount = 0; state.cashAmount = total; }
-  else { state.qrisAmount = amount; state.cashAmount = total - amount; }
-};
-
 async function pilihMeja() {
   const tables = state.tables.filter(t => t.aktif !== false);
   const modal = document.createElement('div');
@@ -309,10 +297,6 @@ async function pilihMeja() {
             <div class="table-name">${meja.nama}</div>
           </button>
         `).join('')}
-        <button class="table-btn" data-id="takeaway" data-nomor="TA" data-nama="Take Away">
-          <div class="table-number">TA</div>
-          <div class="table-name">Take Away</div>
-        </button>
       </div>
       <div class="modal-actions">
         <button class="btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">Batal</button>
@@ -320,20 +304,13 @@ async function pilihMeja() {
     </div>
   `;
   document.body.appendChild(modal);
-  
   modal.querySelectorAll('.table-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       const id = btn.dataset.id;
       const nomor = btn.dataset.nomor;
       const nama = btn.dataset.nama;
-      
-      if (id === 'takeaway') {
-        state.selectedTable = { id: 'takeaway', nomor: 'TA', nama: 'Take Away' };
-      } else {
-        state.selectedTable = { id, nomor, nama };
-      }
-      
-      showToast(`Meja ${nomor} - ${nama} dipilih`, 'success');
+      state.selectedTable = { id, nomor, nama };
+      Utils.showToast(`Meja ${nomor} - ${nama} dipilih`, 'success');
       modal.remove();
       renderKasir();
     });
@@ -342,29 +319,25 @@ async function pilihMeja() {
 
 async function bayar() {
   if (!state.currentSession) { bukaShift(); return; }
-  if (!state.selectedTable) { showToast("Pilih meja!", 'warning'); return; }
-  if (state.cart.length === 0) { showToast("Keranjang kosong!", 'error'); return; }
-  
+  if (!state.selectedTable) { Utils.showToast("Pilih meja!", 'warning'); return; }
+  if (state.cart.length === 0) { Utils.showToast("Keranjang kosong!", 'error'); return; }
   const total = getTotal();
   let cashAmount = 0, qrisAmount = 0, paid = 0;
-  
   if (state.selectedPaymentMethod === 'tunai') {
     cashAmount = state.cashAmount || 0;
     paid = cashAmount;
-    if (cashAmount < total) { showToast("Uang cash kurang!", 'error'); return; }
+    if (cashAmount < total) { Utils.showToast("Uang cash kurang!", 'error'); return; }
   } else if (state.selectedPaymentMethod === 'qris') {
     qrisAmount = total; paid = total;
   } else {
     cashAmount = state.cashAmount || 0;
     qrisAmount = state.qrisAmount || 0;
     paid = cashAmount + qrisAmount;
-    if (paid < total) { showToast("Pembayaran kurang!", 'error'); return; }
+    if (paid < total) { Utils.showToast("Pembayaran kurang!", 'error'); return; }
   }
-  
   try {
     for (const item of state.cart) {
       const produk = state.menus.find(m => m.id === item.id);
-      
       if (produk.resep) {
         for (const bahan of produk.resep) {
           const bahanData = state.rawMaterials.find(b => b.id === bahan.bahanId);
@@ -373,12 +346,10 @@ async function bayar() {
           }
         }
       }
-      
       if (produk.useStock && produk.stock < item.qty) {
         throw new Error(`Stok ${produk.name} tidak cukup`);
       }
     }
-    
     const trxData = {
       items: state.cart, total, paid, change: paid - total,
       cashAmount, qrisAmount, metodeBayar: state.selectedPaymentMethod,
@@ -386,26 +357,21 @@ async function bayar() {
       mejaId: state.selectedTable.id, mejaNama: state.selectedTable.nama, mejaNomor: state.selectedTable.nomor,
       kasir: state.user.email, date: new Date()
     };
-    
     const trxRef = await dbCloud.collection("transactions").add(trxData);
     const trxId = trxRef.id;
     const batch = dbCloud.batch();
-    
     for (const item of state.cart) {
       const produk = state.menus.find(m => m.id === item.id);
-      
       if (produk.useStock) {
-        batch.update(dbCloud.collection("menus").doc(item.id), { 
-          stock: firebase.firestore.FieldValue.increment(-item.qty) 
+        batch.update(dbCloud.collection("menus").doc(item.id), {
+          stock: firebase.firestore.FieldValue.increment(-item.qty)
         });
       }
-      
       if (produk.resep) {
         for (const bahan of produk.resep) {
-          batch.update(dbCloud.collection("raw_materials").doc(bahan.bahanId), { 
-            stock: firebase.firestore.FieldValue.increment(-(bahan.qty * item.qty)) 
+          batch.update(dbCloud.collection("raw_materials").doc(bahan.bahanId), {
+            stock: firebase.firestore.FieldValue.increment(-(bahan.qty * item.qty))
           });
-          
           batch.set(dbCloud.collection("stock_mutations").doc(), {
             type: "out", source: "sale", bahanId: bahan.bahanId, namaBahan: bahan.nama,
             qty: bahan.qty * item.qty, satuan: bahan.satuan || 'pcs',
@@ -415,22 +381,19 @@ async function bayar() {
         }
       }
     }
-    
     await batch.commit();
     trxData.id = trxId;
     if (typeof window.printStruk === 'function') await window.printStruk(trxData);
-    
-    state.cart = []; 
-    state.selectedTable = null; 
-    state.cashAmount = 0; 
-    state.qrisAmount = 0; 
+    state.cart = [];
+    state.selectedTable = null;
+    state.cashAmount = 0;
+    state.qrisAmount = 0;
     state.selectedPaymentMethod = 'tunai';
-    
-    showToast("Transaksi berhasil!");
+    Utils.showToast("Transaksi berhasil!");
     renderKasir();
   } catch (err) {
     console.error('Transaksi error:', err);
-    showToast("" + err.message, 'error');
+    Utils.showToast("" + err.message, 'error');
   }
 }
 
@@ -439,82 +402,95 @@ async function showPaymentModal() {
   const modal = document.createElement('div');
   modal.className = 'modal-overlay';
   modal.id = 'payment-modal';
-  
   modal.innerHTML = `
     <div class="modal">
       <h3><i class="fas fa-credit-card"></i> Pembayaran</h3>
-      
-      <div class="total-display" style="font-size: 32px; font-weight: 700; color: var(--primary); text-align: center; margin-bottom: 20px;">
-        Rp ${formatRupiah(total)}
+      <div class="total-display">
+        Rp ${Utils.formatRupiah(total)}
       </div>
-      
       <div class="payment-grid">
-        <button class="payment-option ${state.selectedPaymentMethod === 'tunai' ? 'active' : ''}" 
-                onclick="selectPaymentMethod('tunai')">
+        <button class="payment-option ${state.selectedPaymentMethod === 'tunai' ? 'active' : ''}" onclick="selectPaymentMethod('tunai')">
           <i class="fas fa-money-bill-wave"></i>
           <span>CASH</span>
         </button>
-        <button class="payment-option ${state.selectedPaymentMethod === 'qris' ? 'active' : ''}" 
-                onclick="selectPaymentMethod('qris')">
+        <button class="payment-option ${state.selectedPaymentMethod === 'qris' ? 'active' : ''}" onclick="selectPaymentMethod('qris')">
           <i class="fas fa-qrcode"></i>
           <span>QRIS</span>
         </button>
-        <button class="payment-option ${state.selectedPaymentMethod === 'mixed' ? 'active' : ''}" 
-                onclick="selectPaymentMethod('mixed')">
+        <button class="payment-option ${state.selectedPaymentMethod === 'mixed' ? 'active' : ''}" onclick="selectPaymentMethod('mixed')">
           <i class="fas fa-random"></i>
           <span>CAMPUR</span>
         </button>
       </div>
-      
       <div id="modalPaymentContent">
         ${renderModalPaymentContent()}
       </div>
-      
       <div class="modal-actions">
         <button class="btn btn-secondary" id="cancelPaymentBtn">Batal</button>
         <button class="btn btn-primary" id="processPaymentBtn">Proses</button>
       </div>
     </div>
   `;
-  
+
   document.body.appendChild(modal);
-  
-  window.selectPaymentMethod = function(method) {
+
+  let cashTimeout, qrisTimeout;
+
+  window.selectPaymentMethod = function (method) {
     state.selectedPaymentMethod = method;
-    if (method === 'tunai') { 
-      state.cashAmount = 0; 
-      state.qrisAmount = 0; 
-    } else if (method === 'qris') { 
-      state.cashAmount = 0; 
-      state.qrisAmount = total; 
-    } else { 
-      state.cashAmount = 0; 
-      state.qrisAmount = 0; 
+    if (method === 'tunai') {
+      state.cashAmount = 0;
+      state.qrisAmount = 0;
+    } else if (method === 'qris') {
+      state.cashAmount = 0;
+      state.qrisAmount = total;
+    } else {
+      state.cashAmount = 0;
+      state.qrisAmount = 0;
     }
-    
+
     const contentDiv = document.getElementById('modalPaymentContent');
     if (contentDiv) {
+      const activeElement = document.activeElement;
+      const selectionStart = activeElement?.selectionStart;
+      const selectionEnd = activeElement?.selectionEnd;
+
       contentDiv.innerHTML = renderModalPaymentContent();
+
+      if (activeElement && activeElement.id) {
+        const newInput = document.getElementById(activeElement.id);
+        if (newInput) {
+          newInput.focus();
+          if (selectionStart !== undefined) {
+            newInput.setSelectionRange(selectionStart, selectionEnd);
+          }
+        }
+      }
     }
-    
+
     document.querySelectorAll('.payment-option').forEach(btn => {
       btn.classList.remove('active');
     });
     document.querySelectorAll('.payment-option')[method === 'tunai' ? 0 : method === 'qris' ? 1 : 2].classList.add('active');
   };
-  
-  document.getElementById('cancelPaymentBtn').addEventListener('click', function() {
+
+  document.getElementById('cancelPaymentBtn').addEventListener('click', function () {
     document.body.removeChild(modal);
   });
-  
-  document.getElementById('processPaymentBtn').addEventListener('click', async function() {
-    await bayar();
-    if (document.body.contains(modal)) {
-      document.body.removeChild(modal);
+
+  document.getElementById('processPaymentBtn').addEventListener('click', async function () {
+    try {
+        await bayar();
+        if (document.body.contains(modal)) {
+            document.body.removeChild(modal);
+        }
+    } catch (error) {
+        console.error('processPayment error:', error);
+        Utils.showToast('Gagal proses pembayaran: ' + error.message, 'error');
     }
   });
-  
-  modal.addEventListener('click', function(e) {
+
+  modal.addEventListener('click', function (e) {
     if (e.target === modal) {
       document.body.removeChild(modal);
     }
@@ -523,76 +499,204 @@ async function showPaymentModal() {
 
 function renderModalPaymentContent() {
   const total = getTotal();
-  
+
   if (state.selectedPaymentMethod === 'tunai') {
     return `
       <div>
         <label class="form-label">Nominal Cash</label>
-        <input type="text" class="form-input" placeholder="Masukkan nominal" 
-               oninput="updateCashAmount(this.value); document.getElementById('modalPaymentContent').innerHTML = window.renderModalPaymentContent()"
-               value="${state.cashAmount ? formatRupiah(state.cashAmount) : ''}">
+        <input type="text" id="cash-input" class="form-input" placeholder="Masukkan nominal" 
+               oninput="handleCashInput(this.value)" autocomplete="off"
+               value="${state.cashAmount ? Utils.formatRupiah(state.cashAmount) : ''}">
         <div class="quick-buttons">
-          <button class="btn btn-secondary" onclick="quickCash(50000); document.getElementById('modalPaymentContent').innerHTML = window.renderModalPaymentContent()">50K</button>
-          <button class="btn btn-secondary" onclick="quickCash(100000); document.getElementById('modalPaymentContent').innerHTML = window.renderModalPaymentContent()">100K</button>
-          <button class="btn btn-secondary" onclick="quickCash(${total}); document.getElementById('modalPaymentContent').innerHTML = window.renderModalPaymentContent()">LUNAS</button>
+          <button class="btn btn-secondary" onclick="quickCash(50000)">50K</button>
+          <button class="btn btn-secondary" onclick="quickCash(100000)">100K</button>
+          <button class="btn btn-secondary" onclick="quickCash(${total})">LUNAS</button>
         </div>
         ${state.cashAmount > 0 ? `
           <div class="change-info ${state.cashAmount >= total ? 'success' : 'warning'}">
             <span>${state.cashAmount >= total ? 'Kembalian' : 'Kekurangan'}</span>
-            <span>Rp ${formatRupiah(Math.abs(state.cashAmount - total))}</span>
+            <span>Rp ${Utils.formatRupiah(Math.abs(state.cashAmount - total))}</span>
           </div>
         ` : ''}
       </div>
     `;
   }
-  
+
   if (state.selectedPaymentMethod === 'qris') {
     return `
       <div class="qris-display">
-        <i class="fas fa-qrcode"></i>
-        <div class="qris-amount">Rp ${formatRupiah(total)}</div>
+        <i class="fas fa-qrcode qris-icon"></i>
+        <div class="qris-amount">Rp ${Utils.formatRupiah(total)}</div>
         <p>Scan QRIS</p>
       </div>
     `;
   }
-  
+
   if (state.selectedPaymentMethod === 'mixed') {
     return `
       <div>
         <div class="form-group">
           <label class="form-label">Cash</label>
-          <div style="display: flex; gap: 8px;">
-            <input type="text" class="form-input" style="flex: 2;" placeholder="Nominal" 
-                   oninput="updateCashAmount(this.value); document.getElementById('modalPaymentContent').innerHTML = window.renderModalPaymentContent()"
-                   value="${state.cashAmount ? formatRupiah(state.cashAmount) : ''}">
-            <button class="btn btn-secondary" style="flex: 1;" onclick="quickCash(50000); document.getElementById('modalPaymentContent').innerHTML = window.renderModalPaymentContent()">50K</button>
-            <button class="btn btn-secondary" style="flex: 1;" onclick="quickCash(100000); document.getElementById('modalPaymentContent').innerHTML = window.renderModalPaymentContent()">100K</button>
+          <div class="mixed-input-flex">
+            <input type="text" id="mixed-cash-input" class="form-input" placeholder="Nominal" 
+                   oninput="handleMixedCashInput(this.value)" autocomplete="off"
+                   value="${state.cashAmount ? Utils.formatRupiah(state.cashAmount) : ''}">
+            <button class="btn btn-secondary" onclick="quickCash(50000)">50K</button>
+            <button class="btn btn-secondary" onclick="quickCash(100000)">100K</button>
           </div>
         </div>
         <div class="form-group">
           <label class="form-label">QRIS</label>
-          <div style="display: flex; gap: 8px;">
-            <input type="text" class="form-input" style="flex: 2;" placeholder="Nominal" 
-                   oninput="updateQrisAmount(this.value); document.getElementById('modalPaymentContent').innerHTML = window.renderModalPaymentContent()"
-                   value="${state.qrisAmount ? formatRupiah(state.qrisAmount) : ''}">
-            <button class="btn btn-secondary" style="flex: 1;" onclick="quickQris(50000); document.getElementById('modalPaymentContent').innerHTML = window.renderModalPaymentContent()">50K</button>
-            <button class="btn btn-secondary" style="flex: 1;" onclick="quickQris(100000); document.getElementById('modalPaymentContent').innerHTML = window.renderModalPaymentContent()">100K</button>
+          <div class="mixed-input-flex">
+            <input type="text" id="mixed-qris-input" class="form-input" placeholder="Nominal" 
+                   oninput="handleMixedQrisInput(this.value)" autocomplete="off"
+                   value="${state.qrisAmount ? Utils.formatRupiah(state.qrisAmount) : ''}">
+            <button class="btn btn-secondary" onclick="quickQris(50000)">50K</button>
+            <button class="btn btn-secondary" onclick="quickQris(100000)">100K</button>
           </div>
         </div>
         <div class="payment-summary">
-          <div><span>Total</span><span>Rp ${formatRupiah(total)}</span></div>
-          <div><span>Cash</span><span>Rp ${formatRupiah(state.cashAmount || 0)}</span></div>
-          <div><span>QRIS</span><span>Rp ${formatRupiah(state.qrisAmount || 0)}</span></div>
-          <div class="total"><span>Dibayar</span><span>Rp ${formatRupiah((state.cashAmount||0)+(state.qrisAmount||0))}</span></div>
-          <div class="${(state.cashAmount||0)+(state.qrisAmount||0) >= total ? 'success' : 'warning'}">
-            <span>${(state.cashAmount||0)+(state.qrisAmount||0) >= total ? 'Kembalian' : 'Kekurangan'}</span>
-            <span>Rp ${formatRupiah(Math.abs((state.cashAmount||0)+(state.qrisAmount||0) - total))}</span>
+          <div><span>Total</span><span>Rp ${Utils.formatRupiah(total)}</span></div>
+          <div><span>Cash</span><span>Rp ${Utils.formatRupiah(state.cashAmount || 0)}</span></div>
+          <div><span>QRIS</span><span>Rp ${Utils.formatRupiah(state.qrisAmount || 0)}</span></div>
+          <div class="total"><span>Dibayar</span><span>Rp ${Utils.formatRupiah((state.cashAmount || 0) + (state.qrisAmount || 0))}</span></div>
+          <div class="${(state.cashAmount || 0) + (state.qrisAmount || 0) >= total ? 'success' : 'warning'}">
+            <span>${(state.cashAmount || 0) + (state.qrisAmount || 0) >= total ? 'Kembalian' : 'Kekurangan'}</span>
+            <span>Rp ${Utils.formatRupiah(Math.abs((state.cashAmount || 0) + (state.qrisAmount || 0) - total))}</span>
           </div>
         </div>
       </div>
     `;
   }
 }
+
+window.handleCashInput = function (value) {
+  const cash = parseInt(value.replace(/\./g, '')) || 0;
+  const total = getTotal();
+  state.cashAmount = cash;
+
+  const changeInfo = document.querySelector('.change-info');
+  if (changeInfo) {
+    if (cash >= total) {
+      changeInfo.className = 'change-info success';
+      changeInfo.innerHTML = `<span>Kembalian</span><span>Rp ${Utils.formatRupiah(cash - total)}</span>`;
+    } else {
+      changeInfo.className = 'change-info warning';
+      changeInfo.innerHTML = `<span>Kekurangan</span><span>Rp ${Utils.formatRupiah(total - cash)}</span>`;
+    }
+  }
+};
+
+window.handleMixedCashInput = function (value) {
+  const cash = parseInt(value.replace(/\./g, '')) || 0;
+  const total = getTotal();
+
+  if (cash >= total) {
+    state.cashAmount = total;
+    state.qrisAmount = 0;
+    const qrisInput = document.getElementById('mixed-qris-input');
+    if (qrisInput) qrisInput.value = '';
+  } else {
+    state.cashAmount = cash;
+    state.qrisAmount = total - cash;
+    const qrisInput = document.getElementById('mixed-qris-input');
+    if (qrisInput) qrisInput.value = Utils.formatRupiah(total - cash);
+  }
+
+  updateMixedSummary();
+};
+
+window.handleMixedQrisInput = function (value) {
+  const qris = parseInt(value.replace(/\./g, '')) || 0;
+  const total = getTotal();
+
+  if (qris >= total) {
+    state.qrisAmount = total;
+    state.cashAmount = 0;
+    const cashInput = document.getElementById('mixed-cash-input');
+    if (cashInput) cashInput.value = '';
+  } else {
+    state.qrisAmount = qris;
+    state.cashAmount = total - qris;
+    const cashInput = document.getElementById('mixed-cash-input');
+    if (cashInput) cashInput.value = Utils.formatRupiah(total - qris);
+  }
+
+  updateMixedSummary();
+};
+
+function updateMixedSummary() {
+  const total = getTotal();
+  const paid = (state.cashAmount || 0) + (state.qrisAmount || 0);
+  const summary = document.querySelector('.payment-summary');
+
+  if (summary) {
+    summary.innerHTML = `
+      <div><span>Total</span><span>Rp ${Utils.formatRupiah(total)}</span></div>
+      <div><span>Cash</span><span>Rp ${Utils.formatRupiah(state.cashAmount || 0)}</span></div>
+      <div><span>QRIS</span><span>Rp ${Utils.formatRupiah(state.qrisAmount || 0)}</span></div>
+      <div class="total"><span>Dibayar</span><span>Rp ${Utils.formatRupiah(paid)}</span></div>
+      <div class="${paid >= total ? 'success' : 'warning'}">
+        <span>${paid >= total ? 'Kembalian' : 'Kekurangan'}</span>
+        <span>Rp ${Utils.formatRupiah(Math.abs(paid - total))}</span>
+      </div>
+    `;
+  }
+}
+
+
+window.quickCash = function (amount) {
+  if (state.selectedPaymentMethod === 'mixed') {
+    const total = getTotal();
+    if (amount >= total) {
+      state.cashAmount = total;
+      state.qrisAmount = 0;
+      const cashInput = document.getElementById('mixed-cash-input');
+      const qrisInput = document.getElementById('mixed-qris-input');
+      if (cashInput) cashInput.value = Utils.formatRupiah(total);
+      if (qrisInput) qrisInput.value = '';
+    } else {
+      state.cashAmount = amount;
+      state.qrisAmount = total - amount;
+      const cashInput = document.getElementById('mixed-cash-input');
+      const qrisInput = document.getElementById('mixed-qris-input');
+      if (cashInput) cashInput.value = Utils.formatRupiah(amount);
+      if (qrisInput) qrisInput.value = Utils.formatRupiah(total - amount);
+    }
+    updateMixedSummary();
+  } else {
+    state.cashAmount = amount;
+    const cashInput = document.getElementById('cash-input');
+    if (cashInput) cashInput.value = Utils.formatRupiah(amount);
+  }
+};
+
+window.quickQris = function (amount) {
+  const total = getTotal();
+  if (amount >= total) {
+    state.qrisAmount = total;
+    state.cashAmount = 0;
+    const cashInput = document.getElementById('mixed-cash-input');
+    const qrisInput = document.getElementById('mixed-qris-input');
+    if (cashInput) cashInput.value = '';
+    if (qrisInput) qrisInput.value = Utils.formatRupiah(total);
+  } else if (amount < 0) {
+    state.qrisAmount = 0;
+    state.cashAmount = total;
+    const cashInput = document.getElementById('mixed-cash-input');
+    const qrisInput = document.getElementById('mixed-qris-input');
+    if (cashInput) cashInput.value = Utils.formatRupiah(total);
+    if (qrisInput) qrisInput.value = '';
+  } else {
+    state.qrisAmount = amount;
+    state.cashAmount = total - amount;
+    const cashInput = document.getElementById('mixed-cash-input');
+    const qrisInput = document.getElementById('mixed-qris-input');
+    if (cashInput) cashInput.value = Utils.formatRupiah(total - amount);
+    if (qrisInput) qrisInput.value = Utils.formatRupiah(amount);
+  }
+  updateMixedSummary();
+};
 
 window.renderKasir = renderKasir;
 window.selectCategory = selectCategory;
@@ -604,4 +708,3 @@ window.pilihMeja = pilihMeja;
 window.bayar = bayar;
 window.showPaymentModal = showPaymentModal;
 window.renderModalPaymentContent = renderModalPaymentContent;
-window.hitungStokProduk = hitungStokProduk;
