@@ -33,8 +33,8 @@ function renderKasir() {
   const content = `
     <div style="display:flex;gap:24px;height:calc(100vh - 5rem);">
       <div style="flex:1;display:flex;flex-direction:column;min-width:0;overflow:hidden;">
-        <div class="sticky top-0 z-10 smart-header rounded-xl">
-          <div class="flex gap-2" id="category-scroll-container">
+        <div class="sticky top-0 z-10 smart-header rounded-xl" style="margin-bottom:12px;">
+          <div id="category-scroll-container">
             ${categoryNames.map(c => `
               <button onclick="selectCategory('${c}')"
                       class="category-btn ${state.selectedCategory === c ? 'active' : ''}">
