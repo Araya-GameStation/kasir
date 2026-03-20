@@ -14,8 +14,8 @@ function renderBahanManager() {
         </div>
       </div>
       ${lowStockMaterials.length > 0 ? `
-        <div class="alert-warning p-4 bg-yellow-100 dark:bg-yellow-900 rounded-lg">
-          <i class="fas fa-exclamation-triangle text-yellow-600 dark:text-yellow-300 mr-2"></i>
+        <div class="alert-warning-box">
+          <i class="fas fa-exclamation-triangle mr-2" style="color:var(--warning)"></i>
           Stok menipis: ${lowStockMaterials.slice(0, 5).map(b => `${b.name} (${b.stock} ${b.satuan})`).join(', ')}
           ${lowStockMaterials.length > 5 ? ` +${lowStockMaterials.length - 5} lainnya` : ''}
         </div>
