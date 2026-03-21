@@ -59,7 +59,7 @@ function renderSettingsTab() {
           <label class="form-label">Email</label>
           <input type="email" id="tokoEmail" class="form-input" value="${s.toko?.email || ''}">
         </div>
-        <button class="btn btn-primary" onclick="saveTokoSettings()">
+        <button class="btn btn-primary" onclick="const b=this;Utils.setButtonLoading(b,true);saveTokoSettings().finally(()=>Utils.setButtonLoading(b,false))">
           <i class="fas fa-save"></i> Simpan
         </button>
       </div>
@@ -89,7 +89,7 @@ function renderSettingsTab() {
             Tampilkan harga satuan
           </label>
         </div>
-        <button class="btn btn-primary" onclick="saveStrukSettings()">
+        <button class="btn btn-primary" onclick="const b=this;Utils.setButtonLoading(b,true);saveStrukSettings().finally(()=>Utils.setButtonLoading(b,false))">
           <i class="fas fa-save"></i> Simpan
         </button>
       </div>
@@ -110,7 +110,7 @@ function renderSettingsTab() {
         <div class="add-row">
           <input type="text" id="newMejaNomor" class="form-input" placeholder="Nomor meja">
           <input type="text" id="newMejaNama" class="form-input" placeholder="Nama meja">
-          <button class="btn btn-primary" onclick="tambahMeja()">
+          <button class="btn btn-primary" onclick="const b=this;Utils.setButtonLoading(b,true);tambahMeja().finally(()=>Utils.setButtonLoading(b,false))">
             <i class="fas fa-plus"></i> Tambah
           </button>
         </div>
@@ -149,7 +149,7 @@ function renderSettingsTab() {
             `).join('')}
           </tbody>
         </table>
-        <button class="btn btn-primary" onclick="saveMejaSettings()">
+        <button class="btn btn-primary" onclick="const b=this;Utils.setButtonLoading(b,true);saveMejaSettings().finally(()=>Utils.setButtonLoading(b,false))">
           <i class="fas fa-save"></i> Simpan
         </button>
       </div>
@@ -165,7 +165,7 @@ function renderSettingsTab() {
               <i class="fas fa-file-excel"></i>
             </div>
             <h4>Export Excel</h4>
-            <p>Download semua data (rekap produk)</p>
+            <p>Download laporan ringkasan</p>
             <button class="btn btn-primary" onclick="exportToExcel()">
               <i class="fas fa-download"></i> Export
             </button>
@@ -187,7 +187,7 @@ function renderSettingsTab() {
             <h4>Import Excel</h4>
             <p>Import menu & bahan</p>
             <input type="file" id="importExcelFile" accept=".xlsx,.xls" class="file-input-spaced">
-            <button class="btn btn-primary" onclick="importFromExcel()">
+            <button class="btn btn-primary" onclick="const b=this;Utils.setButtonLoading(b,true);importFromExcel().finally(()=>Utils.setButtonLoading(b,false))">
               <i class="fas fa-upload"></i> Import
             </button>
           </div>
@@ -209,7 +209,7 @@ function renderSettingsTab() {
             </div>
             <h4>Reset Riwayat</h4>
             <p>Hapus transaksi & sesi.<br>Kategori, Menu, Bahan tetap</p>
-            <button class="btn btn-warning" onclick="resetRiwayatOnly()">
+            <button class="btn btn-warning" onclick="const b=this;Utils.setButtonLoading(b,true);resetRiwayatOnly().finally(()=>Utils.setButtonLoading(b,false))">
               <i class="fas fa-trash-alt"></i> Reset
             </button>
           </div>
@@ -219,7 +219,7 @@ function renderSettingsTab() {
             </div>
             <h4>Reset Total</h4>
             <p>Hapus SEMUA data!<br>Termasuk menu & bahan</p>
-            <button class="btn btn-danger" onclick="resetData()">
+            <button class="btn btn-danger" onclick="const b=this;Utils.setButtonLoading(b,true);resetData().finally(()=>Utils.setButtonLoading(b,false))">
               <i class="fas fa-skull-crossbones"></i> Reset Total
             </button>
           </div>
@@ -345,93 +345,85 @@ async function saveMejaSettings() {
 function exportToExcel() {
     try {
         const wb = XLSX.utils.book_new();
-        const transaksiData = state.allTransactions?.map(t => {
-            const tgl = new Date(t.date.seconds ? t.date.seconds * 1000 : t.date);
-            return {
-                'Tanggal': tgl.toLocaleDateString('id-ID'),
-                'Waktu': tgl.toLocaleTimeString('id-ID'),
-                'Kasir': t.kasir,
-                'Meja': t.mejaNama || '-',
-                'Total': t.total,
-                'Cash': t.cashAmount || (t.metodeBayar === 'tunai' ? t.total : 0),
-                'QRIS': t.qrisAmount || (t.metodeBayar === 'qris' ? t.total : 0),
-                'Metode': t.metodeBayar === 'tunai' ? 'CASH' : t.metodeBayar === 'qris' ? 'QRIS' : 'CAMPUR',
-                'Item': t.items.length
-            };
-        }) || [];
+
+        const totalTransaksi   = state.allTransactions?.length || 0;
+        const totalPenjualan   = state.allTransactions?.reduce((s, t) => s + t.total, 0) || 0;
+        const totalCash        = state.allTransactions?.reduce((s, t) => s + (t.cashAmount || (t.metodeBayar === 'tunai' ? t.total : 0)), 0) || 0;
+        const totalQRIS        = state.allTransactions?.reduce((s, t) => s + (t.qrisAmount || (t.metodeBayar === 'qris' ? t.total : 0)), 0) || 0;
+        const totalPengeluaran = state.pengeluaran?.reduce((s, p) => s + (p.nominal || 0), 0) || 0;
+        const kasBersih        = totalCash - totalPengeluaran;
+
+        const rows = [];
+
+        rows.push({ A: 'LAPORAN GARIS WAKTU' });
+        rows.push({ A: `Dicetak: ${new Date().toLocaleString('id-ID')}` });
+        rows.push({});
+
+        rows.push({ A: '== RINGKASAN ==' });
+        rows.push({ A: 'Total Transaksi',   B: totalTransaksi });
+        rows.push({ A: 'Total Cash',        B: totalCash });
+        rows.push({ A: 'Total QRIS',        B: totalQRIS });
+        rows.push({ A: 'Total Penjualan',   B: totalPenjualan });
+        if (totalPengeluaran > 0) {
+            rows.push({ A: 'Total Pengeluaran', B: -totalPengeluaran });
+            rows.push({ A: 'Kas Bersih',        B: kasBersih });
+        }
+        rows.push({});
+
+        rows.push({ A: '== PRODUK TERLARIS ==' });
+        rows.push({ A: 'Nama Produk', B: 'Jumlah Terjual', C: 'Total Penjualan' });
         const produkTerjual = {};
         state.allTransactions?.forEach(t => {
             t.items.forEach(i => {
-                if (!produkTerjual[i.name]) {
-                    produkTerjual[i.name] = {
-                        nama: i.name,
-                        qty: 0,
-                        total: 0,
-                        hargaSatuan: i.price
-                    };
-                }
-                produkTerjual[i.name].qty += i.qty;
-                produkTerjual[i.name].total += (i.price * i.qty);
+                if (!produkTerjual[i.name]) produkTerjual[i.name] = { qty: 0, total: 0 };
+                produkTerjual[i.name].qty   += i.qty;
+                produkTerjual[i.name].total += i.price * i.qty;
             });
         });
-        const rekapData = Object.values(produkTerjual)
-            .sort((a, b) => b.qty - a.qty)
-            .map(p => ({
-                'Nama Produk': p.nama,
-                'Jumlah Terjual': p.qty,
-                'Harga Satuan': p.hargaSatuan,
-                'Total Penjualan': p.total,
-                'Persentase': state.allTransactions?.length ?
-                    `${((p.qty / state.allTransactions.reduce((sum, t) => sum + t.items.length, 0)) * 100).toFixed(1)}%` : '0%'
-            }));
-        const menuData = state.menus?.map(m => ({
-            'Nama Menu': m.name,
-            'Harga': m.price,
-            'Kategori': state.categories.find(c => c.id === m.categoryId)?.name || '-',
-            'Stok': m.useStock ? m.stock : 'Tanpa stok',
-            'Jumlah Resep': m.resep?.length || 0,
-            'Status': m.active ? 'Aktif' : 'Nonaktif'
-        })) || [];
-        const bahanData = state.rawMaterials?.map(b => ({
-            'Nama Bahan': b.name,
-            'Stok': b.stock,
-            'Satuan': b.satuan || 'pcs',
-            'Min Stok': b.minStock || 5,
-            'Supplier': b.supplier || '-',
-            'Status': b.stock <= (b.minStock || 5) ? 'Menipis' : 'Aman'
-        })) || [];
-        const kategoriData = state.categories?.map(c => ({
-            'Nama Kategori': c.name,
-            'Tipe': c.system ? 'System' : 'Custom',
-            'Jumlah Menu': state.menus.filter(m => m.categoryId === c.id).length
-        })) || [];
-        const sesiData = state.sessions?.map(s => {
-            const buka = new Date(s.waktuBuka.seconds ? s.waktuBuka.seconds * 1000 : s.waktuBuka);
-            const tutup = s.waktuTutup ? new Date(s.waktuTutup.seconds * 1000) : null;
-            return {
-                'Kasir': s.kasir,
-                'Shift': s.shift,
-                'Buka': buka.toLocaleString('id-ID'),
-                'Tutup': tutup ? tutup.toLocaleString('id-ID') : 'Masih aktif',
-                'Modal': s.modalAwal || 0,
-                'Penjualan': s.totalPenjualan || 0,
-                'Cash': s.totalCash || 0,
-                'QRIS': s.totalQRIS || 0,
-                'Transaksi': s.jumlahTransaksi || 0,
-                'Status': s.status
-            };
-        }) || [];
-        XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(transaksiData), "Transaksi");
-        XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rekapData), "Produk Terjual");
-        XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(menuData), "Menu");
-        XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(bahanData), "Bahan");
-        XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(kategoriData), "Kategori");
-        XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(sesiData), "Sesi");
-        XLSX.writeFile(wb, `gariswaktu_lengkap_${new Date().toISOString().slice(0, 10)}.xlsx`);
-        Utils.showToast("Excel diekspor");
+        Object.entries(produkTerjual)
+            .sort((a, b) => b[1].qty - a[1].qty)
+            .forEach(([nama, data]) => {
+                rows.push({ A: nama, B: data.qty, C: data.total });
+            });
+        rows.push({});
+
+        const pengeluaranList = state.pengeluaran || [];
+        if (pengeluaranList.length > 0) {
+            rows.push({ A: '== PENGELUARAN ==' });
+            rows.push({ A: 'Nama Pengeluaran', B: 'Nominal' });
+            pengeluaranList.forEach(p => {
+                rows.push({ A: p.nama, B: p.nominal });
+            });
+            rows.push({ A: 'Total', B: totalPengeluaran });
+            rows.push({});
+        }
+
+        const lowStock = state.rawMaterials?.filter(b => b.stock <= (b.minStock || 5)) || [];
+        rows.push({ A: '== BAHAN STOK MENIPIS ==' });
+        if (lowStock.length > 0) {
+            rows.push({ A: 'Nama Bahan', B: 'Stok', C: 'Min. Stok', D: 'Satuan' });
+            lowStock.forEach(b => {
+                rows.push({ A: b.name, B: b.stock, C: b.minStock || 5, D: b.satuan || 'pcs' });
+            });
+        } else {
+            rows.push({ A: 'Semua stok aman' });
+        }
+
+        const ws = XLSX.utils.json_to_sheet(rows, { header: ['A','B','C','D'], skipHeader: true });
+
+        ws['!cols'] = [
+            { wch: 35 },
+            { wch: 20 },
+            { wch: 20 },
+            { wch: 12 },
+        ];
+
+        XLSX.utils.book_append_sheet(wb, ws, 'Laporan');
+        XLSX.writeFile(wb, `gariswaktu_laporan_${new Date().toISOString().slice(0, 10)}.xlsx`);
+        Utils.showToast('Excel diekspor');
     } catch (error) {
         console.error('Export error:', error);
-        Utils.showToast("Gagal: " + error.message, 'error');
+        Utils.showToast('Gagal: ' + error.message, 'error');
     }
 }
 
@@ -439,79 +431,161 @@ function exportToPDF() {
     try {
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF();
+        const PW = 210;
+        const ML = 14;
+        const MR = 14;
         let y = 15;
-        doc.setFontSize(18);
+
+        doc.setFontSize(20);
+        doc.setFont('helvetica', 'bold');
         doc.setTextColor(30, 58, 138);
-        doc.text("LAPORAN GARIS WAKTU", 105, y, { align: 'center' });
+        doc.text('LAPORAN GARIS WAKTU', PW / 2, y, { align: 'center' });
         y += 8;
-        doc.setFontSize(10);
-        doc.setTextColor(100, 100, 100);
-        doc.text(`Dicetak: ${new Date().toLocaleString('id-ID')}`, 105, y, { align: 'center' });
-        y += 15;
+        doc.setFontSize(9);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(120, 120, 120);
+        doc.text(`Dicetak: ${new Date().toLocaleString('id-ID')}`, PW / 2, y, { align: 'center' });
+        y += 6;
+        doc.setDrawColor(30, 58, 138);
+        doc.setLineWidth(0.5);
+        doc.line(ML, y, PW - MR, y);
+        y += 10;
+
+        const totalTransaksi  = state.allTransactions?.length || 0;
+        const totalPenjualan  = state.allTransactions?.reduce((s, t) => s + t.total, 0) || 0;
+        const totalCash       = state.allTransactions?.reduce((s, t) => s + (t.cashAmount || (t.metodeBayar === 'tunai' ? t.total : 0)), 0) || 0;
+        const totalQRIS       = state.allTransactions?.reduce((s, t) => s + (t.qrisAmount || (t.metodeBayar === 'qris' ? t.total : 0)), 0) || 0;
+        const totalPengeluaran = state.pengeluaran?.reduce((s, p) => s + (p.nominal || 0), 0) || 0;
+        const kasBersih       = totalCash - totalPengeluaran;
+
         doc.setFontSize(12);
+        doc.setFont('helvetica', 'bold');
         doc.setTextColor(30, 58, 138);
-        doc.text("RINGKASAN", 14, y);
-        y += 8;
-        const totalTransaksi = state.allTransactions?.length || 0;
-        const totalPenjualan = state.allTransactions?.reduce((s, t) => s + t.total, 0) || 0;
-        const totalCash = state.allTransactions?.reduce((s, t) => s + (t.cashAmount || (t.metodeBayar === 'tunai' ? t.total : 0)), 0) || 0;
-        const totalQRIS = state.allTransactions?.reduce((s, t) => s + (t.qrisAmount || (t.metodeBayar === 'qris' ? t.total : 0)), 0) || 0;
-        doc.setFontSize(10);
-        doc.setTextColor(0, 0, 0);
-        doc.text(`Total Transaksi: ${totalTransaksi}`, 20, y); y += 6;
-        doc.text(`Total Cash: Rp ${Utils.formatRupiah(totalCash)}`, 20, y); y += 6;
-        doc.text(`Total QRIS: Rp ${Utils.formatRupiah(totalQRIS)}`, 20, y); y += 6;
-        doc.text(`Total Penjualan: Rp ${Utils.formatRupiah(totalPenjualan)}`, 20, y); y += 15;
+        doc.text('RINGKASAN', ML, y);
+        y += 7;
+
+        const ringkasanBody = [
+            ['Total Transaksi', `${totalTransaksi} transaksi`],
+            ['Total Cash',      `Rp ${Utils.formatRupiah(totalCash)}`],
+            ['Total Qris',      `Rp ${Utils.formatRupiah(totalQRIS)}`],
+            ['Total Penjualan', `Rp ${Utils.formatRupiah(totalPenjualan)}`],
+        ];
+        if (totalPengeluaran > 0) {
+            ringkasanBody.push(['Total Pengeluaran', `-Rp ${Utils.formatRupiah(totalPengeluaran)}`]);
+            ringkasanBody.push(['Cash Bersih',        `Rp ${Utils.formatRupiah(kasBersih)}`]);
+        }
+        doc.autoTable({
+            startY: y,
+            body: ringkasanBody,
+            columnStyles: {
+                0: { fontStyle: 'bold', cellWidth: 60 },
+                1: { halign: 'right' }
+            },
+            styles: { fontSize: 10, cellPadding: 3 },
+            tableWidth: 182,
+            alternateRowStyles: { fillColor: [245, 247, 255] },
+            didParseCell(data) {
+                if (totalPengeluaran > 0) {
+                    if (data.row.index === ringkasanBody.length - 2) {
+                        data.cell.styles.textColor = [220, 38, 38];
+                    }
+                    if (data.row.index === ringkasanBody.length - 1) {
+                        data.cell.styles.textColor = [5, 150, 105];
+                        data.cell.styles.fontStyle = 'bold';
+                    }
+                }
+            },
+            margin: { left: ML, right: MR }
+        });
+        y = doc.lastAutoTable.finalY + 12;
+
+        if (y > 240) { doc.addPage(); y = 20; }
         doc.setFontSize(12);
+        doc.setFont('helvetica', 'bold');
         doc.setTextColor(30, 58, 138);
-        doc.text("PRODUK TERLARIS", 14, y);
-        y += 8;
+        doc.text('PRODUK TERLARIS', ML, y);
+        y += 7;
+
         const produkCount = {};
         state.allTransactions?.forEach(t => {
             t.items.forEach(i => {
-                if (!produkCount[i.name]) {
-                    produkCount[i.name] = { qty: 0, total: 0 };
-                }
-                produkCount[i.name].qty += i.qty;
+                if (!produkCount[i.name]) produkCount[i.name] = { qty: 0, total: 0 };
+                produkCount[i.name].qty   += i.qty;
                 produkCount[i.name].total += i.price * i.qty;
             });
         });
         const topProducts = Object.entries(produkCount)
             .sort((a, b) => b[1].qty - a[1].qty)
             .slice(0, 10);
+
         if (topProducts.length > 0) {
             doc.autoTable({
                 startY: y,
                 head: [['Nama Produk', 'Terjual', 'Total Penjualan']],
                 body: topProducts.map(([name, data]) => [
                     name,
-                    data.qty + ' pcs',
+                    `${data.qty} pcs`,
                     `Rp ${Utils.formatRupiah(data.total)}`
                 ]),
                 theme: 'striped',
-                headStyles: { fillColor: [30, 58, 138] },
-                margin: { left: 14, right: 14 }
+                headStyles: { fillColor: [30, 58, 138], fontStyle: 'bold', fontSize: 9.5 },
+                columnStyles: {
+                    0: { cellWidth: 100 },
+                    1: { halign: 'center', cellWidth: 30 },
+                    2: { halign: 'right', cellWidth: 50 }
+                },
+                styles: { fontSize: 9.5, cellPadding: { top: 4, bottom: 4, left: 5, right: 5 } },
+                margin: { left: ML, right: MR }
             });
-            y = doc.lastAutoTable.finalY + 15;
+            y = doc.lastAutoTable.finalY + 12;
         } else {
-            doc.text("Belum ada data penjualan", 20, y);
-            y += 15;
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(10);
+            doc.setTextColor(120, 120, 120);
+            doc.text('Belum ada data penjualan', ML + 6, y);
+            y += 12;
         }
-        if (y > 250) {
-            doc.addPage();
-            y = 20;
+
+        const pengeluaranList = state.pengeluaran || [];
+        if (pengeluaranList.length > 0) {
+            if (y > 240) { doc.addPage(); y = 20; }
+            doc.setFontSize(12);
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(30, 58, 138);
+            doc.text('PENGELUARAN', ML, y);
+            y += 7;
+            doc.autoTable({
+                startY: y,
+                head: [['Nama Pengeluaran', 'Nominal']],
+                body: pengeluaranList.map(p => [
+                    p.nama,
+                    `Rp ${Utils.formatRupiah(p.nominal)}`
+                ]),
+                theme: 'striped',
+                headStyles: { fillColor: [220, 38, 38], fontStyle: 'bold' },
+                columnStyles: {
+                    0: { cellWidth: 130 },
+                    1: { halign: 'right', cellWidth: 52 }
+                },
+                tableWidth: 182,
+                styles: { fontSize: 9.5, cellPadding: { top: 4, bottom: 4, left: 5, right: 5 } },
+                margin: { left: ML, right: MR }
+            });
+            y = doc.lastAutoTable.finalY + 12;
         }
+
+        if (y > 240) { doc.addPage(); y = 20; }
         doc.setFontSize(12);
+        doc.setFont('helvetica', 'bold');
         doc.setTextColor(30, 58, 138);
-        doc.text("BAHAN STOK MENIPIS", 14, y);
-        y += 8;
-        const lowStock = state.rawMaterials?.filter(b =>
-            b.stock <= (b.minStock || 5)
-        ) || [];
+        doc.text('BAHAN STOK MENIPIS', ML, y);
+        y += 7;
+
+        const lowStock = state.rawMaterials?.filter(b => b.stock <= (b.minStock || 5)) || [];
         if (lowStock.length > 0) {
             doc.autoTable({
                 startY: y,
-                head: [['Nama Bahan', 'Stok', 'Minimal', 'Satuan']],
+                head: [['Nama Bahan', 'Stok', 'Min. Stok', 'Satuan']],
                 body: lowStock.map(b => [
                     b.name,
                     b.stock,
@@ -519,17 +593,29 @@ function exportToPDF() {
                     b.satuan || 'pcs'
                 ]),
                 theme: 'striped',
-                headStyles: { fillColor: [239, 68, 68] },
-                margin: { left: 14, right: 14 }
+                headStyles: { fillColor: [217, 119, 6], fontStyle: 'bold' },
+                columnStyles: {
+                    0: { cellWidth: 'auto' },
+                    1: { halign: 'center', cellWidth: 36 },
+                    2: { halign: 'center', cellWidth: 36 },
+                    3: { halign: 'center', cellWidth: 30 }
+                },
+                tableWidth: 182,
+                styles: { fontSize: 9.5, cellPadding: { top: 4, bottom: 4, left: 5, right: 5 } },
+                margin: { left: ML, right: MR }
             });
         } else {
-            doc.text("Semua stok aman", 20, y);
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(10);
+            doc.setTextColor(5, 150, 105);
+            doc.text('Semua stok aman ✓', ML + 6, y);
         }
+
         doc.save(`gariswaktu_laporan_${new Date().toISOString().slice(0, 10)}.pdf`);
-        Utils.showToast("PDF diekspor");
+        Utils.showToast('PDF diekspor');
     } catch (error) {
         console.error('PDF error:', error);
-        Utils.showToast("Gagal: " + error.message, 'error');
+        Utils.showToast('Gagal: ' + error.message, 'error');
     }
 }
 
@@ -636,9 +722,16 @@ async function resetRiwayatOnly() {
             mutasi.docs.forEach(doc => batchMutasi.delete(doc.ref));
             await batchMutasi.commit();
         }
+        const pengeluaran = await dbCloud.collection("pengeluaran").get();
+        if (pengeluaran.size > 0) {
+            const batchPengeluaran = dbCloud.batch();
+            pengeluaran.docs.forEach(doc => batchPengeluaran.delete(doc.ref));
+            await batchPengeluaran.commit();
+        }
         state.transactions = [];
         state.allTransactions = [];
         state.sessions = [];
+        state.pengeluaran = [];
         state.currentSession = null;
         state.cart = [];
         state.selectedTable = null;
@@ -697,6 +790,10 @@ async function resetData() {
         const batch8 = dbCloud.batch();
         settings.docs.forEach(d => batch8.delete(d.ref));
         await batch8.commit();
+        const pengeluaranAll = await dbCloud.collection("pengeluaran").get();
+        const batch9 = dbCloud.batch();
+        pengeluaranAll.docs.forEach(d => batch9.delete(d.ref));
+        await batch9.commit();
         state.transactions = [];
         state.allTransactions = [];
         state.sessions = [];
@@ -706,6 +803,7 @@ async function resetData() {
         state.stockMutations = [];
         state.tables = [];
         state.settings = null;
+        state.pengeluaran = [];
         state.currentSession = null;
         state.cart = [];
         state.selectedTable = null;

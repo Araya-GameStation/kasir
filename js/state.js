@@ -47,6 +47,7 @@ let state = createState({
     selectedTable: null,
     settings: null,
     offlineQueue: [],
+    pengeluaran: [],
     selectedPaymentMethod: 'tunai',
     cashAmount: 0,
     qrisAmount: 0,

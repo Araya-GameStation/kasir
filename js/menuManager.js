@@ -17,9 +17,12 @@ function renderMenuManager() {
       <div class="category-grid">
         ${sortedCategories.map(c => `
           <div class="category-card">
-            <div class="category-header">
+            <div class="section-category-header">
               <h3>${c.name}</h3>
               ${c.system ? '<span class="badge-system">System</span>' : ''}
+            </div>
+            <div style="font-size:12px;color:var(--text-muted);margin:-4px 0 8px 0;">
+              ${state.menus.filter(m => m.categoryId === c.id).length} Produk
             </div>
             <div class="category-actions">
               <button class="btn btn-primary btn-sm" onclick="openCategory('${c.id}')">
@@ -29,7 +32,7 @@ function renderMenuManager() {
                 <button class="btn-icon-sm" onclick="editCategory('${c.id}')" title="Edit">
                   <i class="fas fa-pen"></i>
                 </button>
-                <button class="btn-icon-sm btn-icon-danger" onclick="deleteCategory('${c.id}')" title="Hapus">
+                <button class="btn-icon-sm btn-icon-danger" onclick="const b=this;Utils.setButtonLoading(b,true);deleteCategory('${c.id}').finally(()=>Utils.setButtonLoading(b,false))" title="Hapus">
                   <i class="fas fa-trash"></i>
                 </button>
               ` : ''}
@@ -234,7 +237,7 @@ async function showAddMenuModal(categoryId) {
       </div>
       <div class="modal-actions">
         <button class="btn btn-secondary" onclick="closeAddMenuModal()">Batal</button>
-        <button class="btn btn-primary" onclick="saveNewMenu('${categoryId}')">
+        <button class="btn btn-primary" onclick="const b=this;Utils.setButtonLoading(b,true);saveNewMenu('${categoryId}').finally(()=>Utils.setButtonLoading(b,false))">
           <i class="fas fa-save"></i> Simpan
         </button>
       </div>
@@ -580,9 +583,10 @@ async function deleteSelectedMenus(categoryId) {
     if (state.selectedMenus.size === 0) return;
     if (!await Utils.showConfirm(`Hapus ${state.selectedMenus.size} menu?`)) return;
     try {
+        const jumlah = state.selectedMenus.size;
         await Promise.all([...state.selectedMenus].map(id => dbCloud.collection("menus").doc(id).delete()));
         state.selectedMenus.clear();
-        Utils.showToast(`${state.selectedMenus.size} menu dihapus`);
+        Utils.showToast(`${jumlah} menu dihapus`);
         openCategory(categoryId);
     } catch (error) {
         Utils.showToast("Gagal: " + error.message, 'error');

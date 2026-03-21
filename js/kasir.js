@@ -107,7 +107,6 @@ function renderKasir() {
     document.querySelectorAll('.card').forEach(card => {
       card.classList.add('no-animation');
       
-      
     });
   }
 }
@@ -485,12 +484,15 @@ async function showPaymentModal() {
   });
 
   document.getElementById('processPaymentBtn').addEventListener('click', async function () {
+    const btn = document.getElementById('processPaymentBtn');
+    Utils.setButtonLoading(btn, true);
     try {
         await bayar();
         if (document.body.contains(modal)) {
             document.body.removeChild(modal);
         }
     } catch (error) {
+        Utils.setButtonLoading(btn, false);
         console.error('processPayment error:', error);
         Utils.showToast('Gagal proses pembayaran: ' + error.message, 'error');
     }
@@ -649,7 +651,6 @@ function updateMixedSummary() {
     `;
   }
 }
-
 
 window.quickCash = function (amount) {
   if (state.selectedPaymentMethod === 'mixed') {

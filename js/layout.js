@@ -31,6 +31,12 @@ window.Layout = {
         <nav class="p-3">
           ${this.navItem('Kasir', 'cash-register', 'kasir', window.state.currentSession ? '<span class="w-2 h-2 bg-green-500 rounded-full animate-pulse ml-auto"></span>' : '')}
           ${this.navItem('Riwayat', 'history', 'history', `<span class="nav-badge">${window.state.transactions.length}</span>`)}
+
+          <button onclick="window.bukaModalPengeluaran()" class="w-full flex items-center gap-3 p-3 rounded-lg transition-all nav-item" title="${window.sidebarCollapsed ? 'Pengeluaran' : ''}">
+            <i class="fas fa-money-bill-wave w-5" style="color:var(--danger)"></i>
+            <span class="text-sm font-medium whitespace-nowrap ${window.sidebarCollapsed ? 'hidden' : ''}">Pengeluaran</span>
+            ${(window.state.pengeluaran?.filter(p => p.sessionId === window.state.currentSession?.id).length || 0) > 0 ? '<span class="nav-badge" id="badge-pengeluaran">' + window.state.pengeluaran.filter(p => p.sessionId === window.state.currentSession?.id).length + '</span>' : '<span class="nav-badge" id="badge-pengeluaran" style="display:none">0</span>'}
+          </button>
           ${this.navItem('Bahan', 'boxes', 'bahanManager', lowStockCount > 0 ? `<span class="nav-badge warning">${lowStockCount}</span>` : '')}
           ${this.navItem('Menu', 'utensils', 'menuManager')}
           ${this.navItem('Pengaturan', 'cog', 'settings')}
@@ -96,7 +102,7 @@ window.Layout = {
             </span>
           </div>
         ` : `
-          <button onclick="window.bukaShift()" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-all transform hover:scale-105 active:scale-95 flex items-center gap-2">
+          <button onclick="const b=this;Utils.setButtonLoading(b,true);window.bukaShift().finally(()=>Utils.setButtonLoading(b,false))" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-all transform hover:scale-105 active:scale-95 flex items-center gap-2">
             <i class="fas fa-play"></i>
             Buka Shift
           </button>

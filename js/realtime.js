@@ -113,6 +113,20 @@ async function updateAllProductStocks() {
     }
 }
 
+function startRealtimePengeluaran() {
+    const unsubscribe = dbCloud.collection("pengeluaran")
+        .orderBy("createdAt", "desc")
+        .onSnapshot(snap => {
+            state.pengeluaran = [];
+            snap.forEach(doc => state.pengeluaran.push({ id: doc.id, ...doc.data() }));
+            if (state.currentView === "history") renderHistory();
+            if (document.getElementById('modal-pengeluaran')) {
+                window.refreshListPengeluaran?.();
+            }
+        }, err => console.error("pengeluaran listener:", err));
+    addListener(unsubscribe);
+}
+
 window.startRealtimeCategories = startRealtimeCategories;
 window.startRealtimeMenus = startRealtimeMenus;
 window.startRealtimeTransactions = startRealtimeTransactions;
@@ -120,3 +134,4 @@ window.startRealtimeRawMaterials = startRealtimeRawMaterials;
 window.startRealtimeStockMutations = startRealtimeStockMutations;
 window.startRealtimeTables = startRealtimeTables;
 window.updateAllProductStocks = updateAllProductStocks;
+window.startRealtimePengeluaran = startRealtimePengeluaran;

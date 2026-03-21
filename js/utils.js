@@ -40,6 +40,28 @@ window.Utils = {
         }
         input.value = new Intl.NumberFormat("id-ID").format(parseInt(value));
     },
+
+    setButtonLoading(btn, loading) {
+        if (!btn) return;
+        if (loading) {
+            btn._originalHTML = btn.innerHTML;
+            btn._originalDisabled = btn.disabled;
+            btn.disabled = true;
+            btn.style.opacity = '0.75';
+            btn.style.pointerEvents = 'none';
+            const text = btn.textContent.trim();
+            btn.innerHTML = '<i class="fas fa-circle-notch fa-spin" style="font-size:13px;margin-right:' + (text ? '6px' : '0') + '"></i>' + text;
+        } else {
+            if (btn._originalHTML !== undefined) {
+                btn.innerHTML = btn._originalHTML;
+                btn.disabled = btn._originalDisabled || false;
+                delete btn._originalHTML;
+                delete btn._originalDisabled;
+            }
+            btn.style.opacity = '';
+            btn.style.pointerEvents = '';
+        }
+    },
     showToast(message, type = 'success') {
         const bgMap = {
             success: _cssVar('--toast-success-bg'),

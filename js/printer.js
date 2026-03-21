@@ -204,10 +204,10 @@ async function printRekapSesi(session, transactions) {
         bytes.push(0x1B, 0x61, 0x00);
         bytes.push(...encoder.encode("Kasir: " + (session.namaKasir || session.kasir) + "\n"));
         bytes.push(...encoder.encode("Shift: " + session.shift + "\n"));
-        const waktuBuka = new Date(session.waktuBuka.seconds * 1000);
+        const waktuBuka = (session.waktuBuka?.seconds ? new Date(session.waktuBuka.seconds * 1000) : new Date(session.waktuBuka));
         bytes.push(...encoder.encode("Buka: " + waktuBuka.toLocaleString('id-ID') + "\n"));
         if (session.waktuTutup) {
-            const waktuTutup = new Date(session.waktuTutup.seconds * 1000);
+            const waktuTutup = (session.waktuTutup?.seconds ? new Date(session.waktuTutup.seconds * 1000) : new Date(session.waktuTutup));
             bytes.push(...encoder.encode("Tutup: " + waktuTutup.toLocaleString('id-ID') + "\n"));
         }
         bytes.push(...encoder.encode("================================\n"));
@@ -258,7 +258,7 @@ function showPrintDialog(trx) {
         Transaksi berhasil disimpan, namun printer Bluetooth belum terkoneksi.
       </p>
       <div class="printer-options">
-        <button class="printer-option" onclick="connectAndPrintFromDialog('${trx.id}')">
+        <button class="printer-option" onclick="const b=this;Utils.setButtonLoading(b,true);connectAndPrintFromDialog('${trx.id}').finally(()=>Utils.setButtonLoading(b,false))">
           <div class="printer-option-icon">
             <i class="fas fa-bluetooth"></i>
           </div>

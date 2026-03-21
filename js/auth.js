@@ -10,6 +10,7 @@ firebase.auth().onAuthStateChanged(async function (user) {
         startRealtimeRawMaterials();
         startRealtimeStockMutations();
         startRealtimeTables();
+        startRealtimePengeluaran();
         renderKasir();
     }
 });
@@ -19,7 +20,7 @@ function renderLogin() {
     <div class="login-screen">
       <div class="login-card">
         <span class="brand-title">GARIS WAKTU</span>
-        <p class="brand-subtitle">Sistem Kasir dengan manajemen stok bahan baku dan resep</p>
+        <p class="brand-subtitle">Sistem Kasir dengan Manajemen Stok, Resep, Pengeluaran, dan Laporan</p>
         <input id="email" type="email" class="login-input" placeholder="Email" autocomplete="email">
         <input id="password" type="password" class="login-input" placeholder="Password" autocomplete="current-password">
         <button class="btn-login" onclick="login()">MASUK</button>
@@ -81,16 +82,22 @@ async function loadTables() {
     try {
         const snapshot = await dbCloud.collection("tables").get();
         if (snapshot.empty) {
-            const defaultTables = [
-                { nomor: "TA", nama: "Take Away", aktif: true }
-            ];
-            for (const table of defaultTables) {
-                await dbCloud.collection("tables").add(table);
-            }
-            state.tables = defaultTables;
+            // Belum ada meja sama sekali — tambah Take Away default
+            const ref = await dbCloud.collection("tables").add({ nomor: "TA", nama: "Take Away", aktif: true });
+            state.tables = [{ id: ref.id, nomor: "TA", nama: "Take Away", aktif: true }];
         } else {
-            state.tables = [];
-            snapshot.forEach(doc => state.tables.push({ id: doc.id, ...doc.data() }));
+            // Cleanup: hapus duplikat Take Away (jaga hanya yang pertama)
+            const allDocs = [];
+            snapshot.forEach(doc => allDocs.push({ id: doc.id, ...doc.data() }));
+
+            const taDocs = allDocs.filter(t => t.nomor === "TA" || t.nama === "Take Away");
+            if (taDocs.length > 1) {
+                // Hapus semua kecuali yang pertama
+                const toDelete = taDocs.slice(1);
+                await Promise.all(toDelete.map(t => dbCloud.collection("tables").doc(t.id).delete()));
+            }
+
+            state.tables = allDocs.filter(t => !taDocs.slice(1).find(d => d.id === t.id));
         }
     } catch (error) {
         console.error(error);
@@ -158,6 +165,10 @@ async function tutupShift() {
     const totalPenjualan = transaksiSesi.reduce((sum, t) => sum + t.total, 0);
     const totalCash = transaksiSesi.reduce((sum, t) => sum + (t.cashAmount || (t.metodeBayar === 'tunai' ? t.total : 0)), 0);
     const totalQRIS = transaksiSesi.reduce((sum, t) => sum + (t.qrisAmount || (t.metodeBayar === 'qris' ? t.total : 0)), 0);
+    const pengeluaranSesi = state.pengeluaran?.filter(p =>
+        p.sessionId === state.currentSession.id) || [];
+    const totalPengeluaran = pengeluaranSesi.reduce((sum, p) => sum + (p.nominal || 0), 0);
+    const kasBersih = totalCash - totalPengeluaran;
     const uangDiLaci = state.currentSession.modalAwal + totalCash;
     const result = await Utils.showModal({
         title: `Rekap Shift ${state.currentSession.shift}`,
@@ -167,6 +178,11 @@ async function tutupShift() {
         <div><span>CASH</span><strong> Rp ${Utils.formatRupiah(totalCash)}</strong></div>
         <div><span>QRIS</span><strong> Rp ${Utils.formatRupiah(totalQRIS)}</strong></div>
         <div><span>Total</span><strong> Rp ${Utils.formatRupiah(totalPenjualan)}</strong></div>
+        \${totalPengeluaran > 0 ? \`
+        <div style="border-top:1px solid rgba(255,255,255,0.2);margin-top:8px;padding-top:8px;">
+          <div><span>Pengeluaran</span><strong style="color:#fca5a5"> -Rp \${Utils.formatRupiah(totalPengeluaran)}</strong></div>
+          <div><span>Kas Bersih</span><strong style="color:#86efac"> Rp \${Utils.formatRupiah(kasBersih)}</strong></div>
+        </div>\` : ''}
       </div>
     `,
         buttons: [

@@ -29,7 +29,7 @@ function renderHistory() {
         <div style="display:flex;align-items:center;gap:10px;">
           <span class="session-badge" style="box-shadow:var(--neu-inset);color:var(--primary-light);">SHIFT ${state.currentSession.shift}</span>
         </div>
-        <span>Buka: ${new Date(state.currentSession.waktuBuka.seconds * 1000).toLocaleString('id-ID')}</span>
+        <span>Buka: ${(() => { const wb = state.currentSession.waktuBuka; const d = wb?.seconds ? new Date(wb.seconds * 1000) : wb?.toDate ? wb.toDate() : new Date(wb); return isNaN(d) ? "-" : d.toLocaleString("id-ID"); })()}</span>
       </div>
       <div class="stats-grid">
         <div class="stat-card">
@@ -75,7 +75,7 @@ function renderHistory() {
                 onclick="deleteSelected()" ${state.selectedHistory.size === 0 ? 'disabled' : ''}>
           <i class="fas fa-trash"></i> Hapus ${state.selectedHistory.size > 0 ? `(${state.selectedHistory.size})` : ''}
         </button>
-        <button class="btn btn-warning" onclick="cetakRekapSesi()">
+        <button class="btn btn-warning" onclick="const b=this;Utils.setButtonLoading(b,true);cetakRekapSesi().finally(()=>Utils.setButtonLoading(b,false))">
           <i class="fas fa-print"></i> Cetak
         </button>
       </div>
@@ -113,7 +113,7 @@ function renderHistory() {
                   <button class="btn btn-icon-sm" onclick="showDetailModal('${t.id}'); event.stopPropagation()">
                     <i class="fas fa-eye"></i>
                   </button>
-                  <button class="btn btn-icon-sm" onclick="reprintReceipt('${t.id}'); event.stopPropagation()">
+                  <button class="btn btn-icon-sm" onclick="const b=this;Utils.setButtonLoading(b,true);reprintReceipt('${t.id}').finally(()=>Utils.setButtonLoading(b,false));event.stopPropagation()">
                     <i class="fas fa-print"></i>
                   </button>
                 </td>

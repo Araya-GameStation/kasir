@@ -58,7 +58,7 @@ function renderBahanManager() {
                 <button class="btn-icon-sm" onclick="editBahan('${b.id}')" title="Edit">
                   <i class="fas fa-edit"></i>
                 </button>
-                <button class="btn-icon-sm btn-icon-danger" onclick="hapusBahan('${b.id}')" title="Hapus">
+                <button class="btn-icon-sm btn-icon-danger" onclick="const bt=this;Utils.setButtonLoading(bt,true);hapusBahan('${b.id}').finally(()=>Utils.setButtonLoading(bt,false))" title="Hapus">
                   <i class="fas fa-trash"></i>
                 </button>
               </td>
