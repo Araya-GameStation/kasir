@@ -1,4 +1,4 @@
-const CACHE_NAME = 'garis-waktu-v1';
+const CACHE_NAME = 'garis-waktu-v2';
 const urlsToCache = [
   '/',
   '/index.html',
@@ -16,6 +16,7 @@ const urlsToCache = [
   '/js/menuManager.js',
   '/js/bahanManager.js',
   '/js/settings.js',
+  '/js/pengeluaran.js',
   '/js/printer.js'
 ];
 
@@ -46,20 +47,39 @@ self.addEventListener('activate', event => {
 });
 
 self.addEventListener('fetch', event => {
+  
+  if (event.request.method !== 'GET') return;
+
+  const url = new URL(event.request.url);
+  const isExternal = !url.origin.includes(self.location.origin.split('//')[1]);
+  const isFirebase = url.hostname.includes('firebase') ||
+                     url.hostname.includes('firestore') ||
+                     url.hostname.includes('googleapis') ||
+                     url.hostname.includes('gstatic');
+  const isCDN = url.hostname.includes('cdn') ||
+                url.hostname.includes('cdnjs') ||
+                url.hostname.includes('jsdelivr') ||
+                url.hostname.includes('tailwind');
+
+  if (isExternal || isFirebase || isCDN) return;
+
   event.respondWith(
     caches.match(event.request)
       .then(response => {
-        if (response) {
-          return response;
-        }
+        if (response) return response;
 
         return fetch(event.request).then(networkResponse => {
-          if (networkResponse.status === 200) {
-            const responseClone = networkResponse.clone();
-            caches.open(CACHE_NAME).then(cache => {
-              cache.put(event.request, responseClone);
-            });
+
+          if (!networkResponse || networkResponse.status !== 200 ||
+              networkResponse.type === 'opaque') {
+            return networkResponse;
           }
+
+          const responseClone = networkResponse.clone();
+          caches.open(CACHE_NAME).then(cache => {
+            cache.put(event.request, responseClone);
+          });
+
           return networkResponse;
         });
       })
