@@ -2,7 +2,7 @@
   "name": "Kasir Garis Waktu",
   "short_name": "GarisWaktu",
   "description": "Sistem Kasir dengan manajemen stok, bahan baku, resep, dan laporan",
-  "start_url": "/kasir/",
+  "start_url": "/",
   "id": "/",
   "display": "standalone",
   "background_color": "#0a7a5f",
