@@ -11,7 +11,7 @@
   "icons": [
     {
       "src": "https://araya-gamestation.github.io/kasir/logo.png",
-      "sizes": "1080x1080",
+      "sizes": "512x512",
       "type": "image/png"
     }
   ]
