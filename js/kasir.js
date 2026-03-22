@@ -7,9 +7,14 @@ function renderKasir() {
     return;
   }
 
+  const categoryContainer = document.getElementById('category-scroll-container');
+  if (categoryContainer) {
+    state.lastCategoryScroll = categoryContainer.scrollLeft;
+  }
+
   const menuContainer = document.getElementById('menu-scroll-container');
   if (menuContainer) {
-    lastScrollPosition = menuContainer.scrollTop;
+    state.lastMenuScroll = menuContainer.scrollTop;
   }
 
   const sortedCategories = [
@@ -71,14 +76,18 @@ function renderKasir() {
   });
 
   requestAnimationFrame(() => {
-    const newMenuContainer = document.getElementById('menu-scroll-container');
-    if (newMenuContainer && lastScrollPosition > 0) {
-      newMenuContainer.scrollTop = lastScrollPosition;
+    const newCategoryContainer = document.getElementById('category-scroll-container');
+    if (newCategoryContainer && state.lastCategoryScroll > 0) {
+      newCategoryContainer.scrollLeft = state.lastCategoryScroll;
     }
-
   });
 
-
+  requestAnimationFrame(() => {
+    const newMenuContainer = document.getElementById('menu-scroll-container');
+    if (newMenuContainer && state.lastMenuScroll > 0) {
+      newMenuContainer.scrollTop = state.lastMenuScroll;
+    }
+  });
 }
 
 function renderNoSession() {
@@ -169,7 +178,7 @@ function renderCartFooter() {
 }
 
 function selectCategory(c) {
-  const categoryContainer = document.getElementById('category-scroll-container')?.parentElement;
+  const categoryContainer = document.getElementById('category-scroll-container');
   if (categoryContainer) {
     state.lastCategoryScroll = categoryContainer.scrollLeft;
   }
