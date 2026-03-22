@@ -7,7 +7,7 @@ function updatePrinterStatus(connected) {
     window.printerConnected = connected;
     const dot = document.getElementById('printer-status-dot');
     const label = document.getElementById('printer-nav-label');
-    if (dot) dot.style.background = connected ? '#22c55e' : '#ef4444';
+    if (dot) { dot.classList.toggle('online', connected); dot.classList.toggle('offline', !connected); }
     if (label && !window.sidebarCollapsed) label.textContent = connected ? 'Printer (On)' : 'Printer';
 }
 
@@ -25,7 +25,6 @@ async function connectPrinter() {
         updatePrinterStatus(true);
         return true;
     } catch (e) {
-        console.error("Printer error:", e);
         Utils.showToast("Gagal connect printer: " + e.message, "error");
         return false;
     }
@@ -60,7 +59,6 @@ async function writeInChunks(data) {
                 await printerCharacteristic.writeValue(chunk);
             }
         } catch (e) {
-            console.error("Write error:", e);
             throw e;
         }
         await new Promise(r => setTimeout(r, delay));
@@ -172,7 +170,6 @@ async function printStruk(trx) {
         isPrinting = false;
         return true;
     } catch (error) {
-        console.error("Print error:", error);
         Utils.showToast("Gagal mencetak: " + error.message, "error");
         isPrinting = false;
         return false;
@@ -297,7 +294,6 @@ async function connectAndPrintFromDialog(trxId) {
             if (trx) await printStruk(trx);
         }
     } catch (error) {
-        console.error('connectAndPrintFromDialog error:', error);
         Utils.showToast('Gagal connect printer: ' + error.message, 'error');
     }
 }
@@ -305,7 +301,7 @@ async function connectAndPrintFromDialog(trxId) {
 function closePrintDialog() {
     const modal = document.getElementById('print-dialog');
     if (modal) {
-        modal.style.animation = 'fadeOut 0.2s ease forwards';
+        modal.classList.add('fade-out');
         setTimeout(() => { if (modal.parentNode) modal.remove(); }, 200);
     }
 }

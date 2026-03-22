@@ -23,18 +23,21 @@ function renderLogin() {
         <p class="brand-subtitle">Sistem Kasir dengan Manajemen Stok, Resep, Pengeluaran, dan Laporan</p>
         <input id="email" type="email" class="login-input" placeholder="Email" autocomplete="email">
         <input id="password" type="password" class="login-input" placeholder="Password" autocomplete="current-password">
-        <button class="btn-login" onclick="login()">MASUK</button>
+        <button class="btn-login" id="btn-login" onclick="const b=this;Utils.setButtonLoading(b,true);login(b)">MASUK</button>
         <p class="brand-footer">VERSI 2.0.0</p>
       </div>
     </div>
   `;
 }
 
-function login() {
+function login(btn) {
     const email = document.getElementById("email").value;
     const pass = document.getElementById("password").value;
     firebase.auth().signInWithEmailAndPassword(email, pass)
-        .catch(e => Utils.showToast(e.message, 'error'));
+        .catch(e => {
+            Utils.showToast(e.message, 'error');
+            if (btn) Utils.setButtonLoading(btn, false);
+        });
 }
 
 function logout() {
@@ -54,7 +57,6 @@ async function initializeApp() {
         await loadTables();
         await checkActiveSession();
     } catch (error) {
-        console.error('initializeApp error:', error);
         Utils.showToast('Gagal memuat aplikasi: ' + error.message, 'error');
     }
 }
@@ -74,7 +76,6 @@ async function loadSettings() {
             state.settings = defaultSettings;
         }
     } catch (error) {
-        console.error(error);
     }
 }
 
@@ -82,17 +83,14 @@ async function loadTables() {
     try {
         const snapshot = await dbCloud.collection("tables").get();
         if (snapshot.empty) {
-            // Belum ada meja sama sekali — tambah Take Away default
             const ref = await dbCloud.collection("tables").add({ nomor: "TA", nama: "Take Away", aktif: true });
             state.tables = [{ id: ref.id, nomor: "TA", nama: "Take Away", aktif: true }];
         } else {
-            // Cleanup: hapus duplikat Take Away (jaga hanya yang pertama)
             const allDocs = [];
             snapshot.forEach(doc => allDocs.push({ id: doc.id, ...doc.data() }));
 
             const taDocs = allDocs.filter(t => t.nomor === "TA" || t.nama === "Take Away");
             if (taDocs.length > 1) {
-                // Hapus semua kecuali yang pertama
                 const toDelete = taDocs.slice(1);
                 await Promise.all(toDelete.map(t => dbCloud.collection("tables").doc(t.id).delete()));
             }
@@ -100,7 +98,6 @@ async function loadTables() {
             state.tables = allDocs.filter(t => !taDocs.slice(1).find(d => d.id === t.id));
         }
     } catch (error) {
-        console.error(error);
     }
 }
 
@@ -125,7 +122,6 @@ async function checkActiveSession() {
             localStorage.setItem("activeSession", JSON.stringify(state.currentSession));
         }
     } catch (error) {
-        console.error(error);
     }
 }
 
@@ -154,7 +150,6 @@ async function bukaShift() {
         Utils.showToast(`Shift ${session.shift} dibuka`);
         renderKasir();
     } catch (error) {
-        console.error('Error buka shift:', error);
         Utils.showToast("Gagal buka shift: " + error.message, 'error');
     }
 }
@@ -179,9 +174,9 @@ async function tutupShift() {
         <div><span>QRIS</span><strong> Rp ${Utils.formatRupiah(totalQRIS)}</strong></div>
         <div><span>Total</span><strong> Rp ${Utils.formatRupiah(totalPenjualan)}</strong></div>
         \${totalPengeluaran > 0 ? \`
-        <div style="border-top:1px solid rgba(255,255,255,0.2);margin-top:8px;padding-top:8px;">
-          <div><span>Pengeluaran</span><strong style="color:#fca5a5"> -Rp \${Utils.formatRupiah(totalPengeluaran)}</strong></div>
-          <div><span>Kas Bersih</span><strong style="color:#86efac"> Rp \${Utils.formatRupiah(kasBersih)}</strong></div>
+        <div class="session-summary-divider">
+          <div><span>Pengeluaran</span><strong class="session-summary-pengeluaran"> -Rp \${Utils.formatRupiah(totalPengeluaran)}</strong></div>
+          <div><span>Kas Bersih</span><strong class="session-summary-kas"> Rp \${Utils.formatRupiah(kasBersih)}</strong></div>
         </div>\` : ''}
       </div>
     `,

@@ -47,10 +47,9 @@ window.Utils = {
             btn._originalHTML = btn.innerHTML;
             btn._originalDisabled = btn.disabled;
             btn.disabled = true;
-            btn.style.opacity = '0.75';
-            btn.style.pointerEvents = 'none';
+            btn.classList.add('btn-loading-disabled');
             const text = btn.textContent.trim();
-            btn.innerHTML = '<i class="fas fa-circle-notch fa-spin" style="font-size:13px;margin-right:' + (text ? '6px' : '0') + '"></i>' + text;
+            btn.innerHTML = '<i class="fas fa-circle-notch fa-spin btn-spinner ' + (text ? 'btn-spinner-mr' : '') + '"></i>' + text;
         } else {
             if (btn._originalHTML !== undefined) {
                 btn.innerHTML = btn._originalHTML;
@@ -58,34 +57,32 @@ window.Utils = {
                 delete btn._originalHTML;
                 delete btn._originalDisabled;
             }
-            btn.style.opacity = '';
-            btn.style.pointerEvents = '';
+            btn.classList.remove('btn-loading-disabled');
         }
     },
     showToast(message, type = 'success') {
-        const bgMap = {
-            success: _cssVar('--toast-success-bg'),
-            warning: _cssVar('--toast-warning-bg'),
-            error:   _cssVar('--toast-error-bg'),
-            info:    _cssVar('--toast-info-bg'),
+        const iconMap = {
+            success: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>',
+            error:   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>',
+            warning: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>',
+            info:    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>',
         };
+        const icon = iconMap[type] || iconMap.info;
         const Toast = Swal.mixin({
             toast: true,
             position: 'top-end',
             showConfirmButton: false,
             timer: 3000,
             timerProgressBar: true,
+            showClass: { popup: 'swal2-show' },
+            hideClass: { popup: 'swal2-hide' },
             didOpen: (toast) => {
                 toast.addEventListener('mouseenter', Swal.stopTimer);
                 toast.addEventListener('mouseleave', Swal.resumeTimer);
             }
         });
         Toast.fire({
-            icon: type,
-            title: message,
-            background: bgMap[type] || bgMap.info,
-            color: _cssVar('--toast-text'),
-            iconColor: _cssVar('--toast-text'),
+            html: `<span class="custom-toast-icon" data-type="${type}">${icon}</span><span class="custom-toast-msg">${message}</span>`,
         });
     },
     async showConfirm(message) {
@@ -110,11 +107,11 @@ window.Utils = {
         const cancelBtn = (options.buttons || []).find(b => b.action === 'cancel');
         const primaryBtn = nonCancelBtns[0];
         const footerBtns = nonCancelBtns.slice(1).map(b =>
-            `<button class="swal2-confirm swal2-styled ${b.class || ''}" style="margin:0 4px;" onclick="window._modalAction='${b.action}';${b.onClick ? 'const _ob=options.buttons.find(x=>x.action===\'' + b.action + '\');if(_ob?.onClick)_ob.onClick();' : ''}Swal.clickConfirm()">${b.text}</button>`
+            `<button class="swal2-confirm swal2-styled swal-action-btn ${b.class || ''}" onclick="window._modalAction='${b.action}';${b.onClick ? 'const _ob=options.buttons.find(x=>x.action===\'' + b.action + '\');if(_ob?.onClick)_ob.onClick();' : ''}Swal.clickConfirm()">${b.text}</button>`
         ).join('');
         const result = await Swal.fire({
             title: options.title,
-            html: options.content + (footerBtns ? `<div style="margin-top:8px">${footerBtns}</div>` : ''),
+            html: options.content + (footerBtns ? `<div class="swal-footer-btns">${footerBtns}</div>` : ''),
             icon: options.icon || undefined,
             showCancelButton: !!cancelBtn,
             showConfirmButton: !!primaryBtn,

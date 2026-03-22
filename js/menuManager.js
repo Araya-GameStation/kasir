@@ -7,10 +7,10 @@ function renderMenuManager() {
         ...state.categories.filter(c => c.system)
     ];
     const content = `
-    <div class="stack-y" style="min-width:0;width:100%;">
-      <div class="flex justify-between items-center">
-        <h2 class="text-2xl font-bold"><i class="fas fa-utensils text-primary mr-2"></i> Kelola Kategori & Menu</h2>
-        <button class="btn btn-primary" onclick="showAddCategoryModal()">
+    <div class="stack-y menu-stack">
+      <div class="row-between">
+        <h2 class="text-heading fw-bold"><i class="fas fa-utensils text-primary mr-2"></i> Kelola Kategori & Menu</h2>
+        <button class="btn btn-primary" onclick="const b=this;Utils.setButtonLoading(b,true);showAddCategoryModal().finally(()=>Utils.setButtonLoading(b,false))">
           <i class="fas fa-plus"></i> Tambah Kategori
         </button>
       </div>
@@ -21,7 +21,7 @@ function renderMenuManager() {
               <h3>${c.name}</h3>
               ${c.system ? '<span class="badge-system">System</span>' : ''}
             </div>
-            <div style="font-size:12px;color:var(--text-muted);margin:-4px 0 8px 0;">
+            <div class="menu-item-meta">
               ${state.menus.filter(m => m.categoryId === c.id).length} Produk
             </div>
             <div class="category-actions">
@@ -78,7 +78,6 @@ async function editCategory(id) {
         });
         Utils.showToast("Kategori berhasil diupdate");
     } catch (error) {
-        console.error('Error edit kategori:', error);
         Utils.showToast("Gagal: " + error.message, 'error');
     }
 }
@@ -105,65 +104,65 @@ function openCategory(id) {
     const menus = state.menus.filter(m => m.categoryId === id);
     const sortedMenus = SortableTable.sort(menus, 'menus');
     const content = `
-    <div class="stack-y" style="min-width:0;width:100%;">
-      <div class="flex justify-between items-center">
-        <h2 class="text-2xl font-bold"><i class="fas fa-folder-open text-primary mr-2"></i> ${category.name}</h2>
+    <div class="stack-y menu-stack">
+      <div class="row-between">
+        <h2 class="text-heading fw-bold"><i class="fas fa-folder-open text-primary mr-2"></i> ${category.name}</h2>
         <button class="btn-kembali" onclick="renderMenuManager()">
           <i class="fas fa-arrow-left"></i> Kembali
         </button>
       </div>
-      <div class="flex gap-4">
+      <div class="row-gap">
         <button class="btn btn-primary" onclick="showAddMenuModal('${id}')">
           <i class="fas fa-plus"></i> Tambah Menu
         </button>
         <button class="btn btn-secondary" onclick="toggleSelectAllMenu('${id}')">
           ${state.selectedMenus.size === menus.length ? 'Batal Pilih' : 'Pilih Semua'}
         </button>
-        <button class="btn btn-danger" onclick="deleteSelectedMenus('${id}')" 
+        <button class="btn btn-danger" onclick="const b=this;Utils.setButtonLoading(b,true);deleteSelectedMenus('${id}').finally(()=>Utils.setButtonLoading(b,false))" 
                 ${state.selectedMenus.size === 0 ? 'disabled' : ''}>
           <i class="fas fa-trash"></i> Hapus ${state.selectedMenus.size > 0 ? `(${state.selectedMenus.size})` : ''}
         </button>
       </div>
-      <table class="w-full">
+      <table class="table-full">
         <thead class="neu-table-head">
           <tr>
-            <th class="p-3 text-left">Pilih</th>
-            <th class="p-3 text-left cursor-pointer" onclick="sortMenus('name')">
+            <th class="td-base text-left">Pilih</th>
+            <th class="td-base text-left cursor-pointer" onclick="sortMenus('name')">
               Nama <i class="fas ${SortableTable.getSortIcon('menus', 'name')}"></i>
             </th>
-            <th class="p-3 text-left cursor-pointer" onclick="sortMenus('price')">
+            <th class="td-base text-left cursor-pointer" onclick="sortMenus('price')">
               Harga <i class="fas ${SortableTable.getSortIcon('menus', 'price')}"></i>
             </th>
-            <th class="p-3 text-left">Stok</th>
-            <th class="p-3 text-left">Aksi</th>
+            <th class="td-base text-left">Stok</th>
+            <th class="td-base text-left">Aksi</th>
           </tr>
         </thead>
         <tbody>
           ${sortedMenus.length === 0 ?
-            '<tr><td colspan="5" class="p-3 text-center text-muted">Belum ada menu</td></tr>' :
+            '<tr><td colspan="5" class="td-base text-center text-muted">Belum ada menu</td></tr>' :
             sortedMenus.map(m => {
                 const stokOtomatis = m.resep ? Utils.hitungStokProduk(m) : null;
                 return `
                 <tr class="neu-table-row">
-                  <td class="p-3">
+                  <td class="td-base">
                     <input type="checkbox" ${state.selectedMenus.has(m.id) ? 'checked' : ''} 
                            onchange="toggleSelectMenu('${m.id}')">
                   </td>
-                  <td class="p-3 font-medium">${m.name}</td>
-                  <td class="p-3">Rp ${Utils.formatRupiah(m.price)}</td>
-                  <td class="p-3">
+                  <td class="td-base td-medium">${m.name}</td>
+                  <td class="td-base">Rp ${Utils.formatRupiah(m.price)}</td>
+                  <td class="td-base">
                     ${m.resep ?
-                        `<span class="text-sm"><i class="fas fa-cubes"></i> ${stokOtomatis} porsi</span>` :
+                        `<span class="text-base-sm"><i class="fas fa-cubes"></i> ${stokOtomatis} porsi</span>` :
                         m.useStock ?
-                            `<span class="text-sm"><i class="fas fa-box"></i> ${m.stock}</span>` :
-                            '<span class="text-sm text-muted"><i class="fas fa-infinity"></i></span>'
+                            `<span class="text-base-sm"><i class="fas fa-box"></i> ${m.stock}</span>` :
+                            '<span class="text-base-sm text-muted"><i class="fas fa-infinity"></i></span>'
                     }
                   </td>
-                  <td class="p-3">
+                  <td class="td-base">
                     <button class="btn-icon-sm" onclick="editMenu('${m.id}')" title="Edit">
                       <i class="fas fa-edit"></i>
                     </button>
-                    <button class="btn-icon-sm btn-icon-danger" onclick="deleteMenu('${m.id}')" title="Hapus">
+                    <button class="btn-icon-sm btn-icon-danger" onclick="const b=this;Utils.setButtonLoading(b,true);deleteMenu('${m.id}').finally(()=>Utils.setButtonLoading(b,false))" title="Hapus">
                       <i class="fas fa-trash"></i>
                     </button>
                   </td>
@@ -201,7 +200,7 @@ async function showAddMenuModal(categoryId) {
       <h3><i class="fas fa-plus-circle"></i> Tambah Menu</h3>
       <div class="form-group">
         <label class="form-label">Nama Menu <span class="text-danger">*</span></label>
-        <input type="text" id="menuName" class="form-input" placeholder="Contoh: Nasi Goreng" autocomplete="off">
+        <input type="text" id="menuName" class="form-input" placeholder="Contoh: Ice Tea" autocomplete="off">
       </div>
       <div class="form-group">
         <label class="form-label">Harga (Rp) <span class="text-danger">*</span></label>
@@ -333,12 +332,11 @@ async function showAddMenuModal(categoryId) {
                 active: true,
                 createdAt: new Date()
             };
-            const docRef = await dbCloud.collection("menus").add(menuData);
+            await dbCloud.collection("menus").add(menuData);
             Utils.showToast("Menu berhasil ditambahkan!");
             closeAddMenuModal();
             openCategory(catId);
         } catch (error) {
-            console.error('Error tambah menu:', error);
             if (error.code === 'permission-denied') {
                 Utils.showToast("Tidak punya izin. Periksa Firestore Rules", 'error');
             } else {
@@ -550,7 +548,6 @@ window.saveEditMenu = async function (id) {
         closeEditModal();
         openCategory(state.currentCategoryId);
     } catch (error) {
-        console.error("Error detail:", error);
         Utils.showToast("Gagal: " + error.message, 'error');
     }
 };

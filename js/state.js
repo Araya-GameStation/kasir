@@ -1,6 +1,31 @@
 const app = document.getElementById("app");
 let sidebarCollapsed = localStorage.getItem('sidebarCollapsed') === 'true';
 let _isRendering = false;
+let _lastView = null;
+
+window.triggerPageTransition = function() {
+    requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+            const el = document.querySelector('.main-inner');
+            if (!el) return;
+            el.classList.remove('page-enter');
+            void el.offsetWidth;
+            el.classList.add('page-enter');
+        });
+    });
+};
+
+window.navigateTo = function(view) {
+    if (_lastView === view) return;
+    _lastView = view;
+    state.currentView = view;
+    if (view === 'kasir')            window.renderKasir?.();
+    else if (view === 'history')     window.renderHistory?.();
+    else if (view === 'menuManager') window.renderMenuManager?.();
+    else if (view === 'bahanManager') window.renderBahanManager?.();
+    else if (view === 'settings')    window.renderSettings?.();
+    setTimeout(() => window.triggerPageTransition(), 50);
+};
 
 function createState(initialState) {
     const handlers = {
@@ -70,6 +95,9 @@ window.safeRender = function () {
     if (_isRendering) return;
     _isRendering = true;
 
+    const viewChanged = _lastView !== state.currentView;
+    if (viewChanged) _lastView = state.currentView;
+
     requestAnimationFrame(() => {
         try {
             if (state.currentView === "kasir" && typeof window.renderKasir === 'function') {
@@ -85,8 +113,8 @@ window.safeRender = function () {
             } else if (state.currentView === "settings" && typeof window.renderSettings === 'function') {
                 window.renderSettings();
             }
+            if (viewChanged) setTimeout(() => window.triggerPageTransition(), 50);
         } catch (error) {
-            console.error('Render error:', error);
         } finally {
             _isRendering = false;
         }

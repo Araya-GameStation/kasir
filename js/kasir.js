@@ -1,7 +1,4 @@
 let lastScrollPosition = 0;
-let lastCategoryScrollPosition = 0;
-let _isAnimating = false;
-let _initialRender = true;
 
 function renderKasir() {
   state.currentView = "kasir";
@@ -15,11 +12,6 @@ function renderKasir() {
     lastScrollPosition = menuContainer.scrollTop;
   }
 
-  const categoryContainer = document.getElementById('category-scroll-container');
-  if (categoryContainer && categoryContainer.parentElement) {
-    lastCategoryScrollPosition = categoryContainer.parentElement.scrollLeft;
-  }
-
   const sortedCategories = [
     ...state.categories.filter(c => !c.system).sort((a, b) => a.name.localeCompare(b.name)),
     ...state.categories.filter(c => c.system)
@@ -31,9 +23,9 @@ function renderKasir() {
   })).sort((a, b) => a.name.localeCompare(b.name));
 
   const content = `
-    <div style="display:flex;gap:24px;height:calc(100vh - 5rem);overflow:hidden;">
-      <div style="flex:1;display:flex;flex-direction:column;min-width:0;overflow-x:hidden;overflow-y:visible;height:100%;">
-        <div class="sticky top-0 z-10 smart-header" style="margin:0 4px 16px 4px;border-radius:16px;">
+    <div class="pos-layout">
+      <div class="pos-left-panel">
+        <div class="smart-header pos-header-sticky">
           <div id="category-scroll-container">
             ${categoryNames.map(c => `
               <button onclick="selectCategory('${c}')"
@@ -49,23 +41,21 @@ function renderKasir() {
           </div>
         </div>
       </div>
-      <div style="width:384px;flex-shrink:0;">
-        <div class="checkout-panel" style="border-radius:12px;height:calc(100vh - 5rem);display:flex;flex-direction:column;">
-          <div class="panel-header-inner p-4 border-b">
-            <div class="flex items-center justify-between">
-              <h3 class="font-semibold text-lg">
-                <i class="fas fa-shopping-cart text-primary mr-2"></i>
-                Pesanan
-              </h3>
-              <span class="nav-badge">
-                ${state.cart.length}
-              </span>
-            </div>
+      <div class="pos-right-panel">
+        <div class="checkout-panel pos-checkout-panel">
+          <div class="panel-header-inner">
+            <h3 class="panel-title">
+              <i class="fas fa-shopping-cart text-primary icon-mr"></i>
+              Pesanan
+            </h3>
+            <span class="nav-badge">
+              ${state.cart.length}
+            </span>
           </div>
-          <div style="flex:1;overflow-y:auto;padding:16px;">
+          <div class="pos-cart-body">
             ${renderCartItems()}
           </div>
-          <div class="panel-footer rounded-b-xl p-4">
+          <div class="panel-footer panel-footer-rounded">
             ${renderCartFooter()}
           </div>
         </div>
@@ -75,10 +65,9 @@ function renderKasir() {
 
   app.innerHTML = Layout.renderMain(content);
 
-  // Kasir kelola scroll sendiri — kunci main agar tidak double scroll
   requestAnimationFrame(() => {
     const mainEl = document.querySelector('main');
-    if (mainEl) { mainEl.style.overflow = 'hidden'; mainEl.style.padding = '16px 20px 0 20px'; }
+    if (mainEl) { mainEl.classList.add('main-kasir-override'); }
   });
 
   requestAnimationFrame(() => {
@@ -87,33 +76,14 @@ function renderKasir() {
       newMenuContainer.scrollTop = lastScrollPosition;
     }
 
-    const newCategoryParent = document.getElementById('category-scroll-container')?.parentElement;
-    if (newCategoryParent && lastCategoryScrollPosition > 0) {
-      newCategoryParent.scrollLeft = lastCategoryScrollPosition;
-    }
   });
 
-  if (_initialRender) {
-    anime({
-      targets: '.card',
-      opacity: [0, 1],
-      translateY: [20, 0],
-      delay: anime.stagger(50),
-      duration: 500,
-      easing: 'easeOutQuad'
-    });
-    _initialRender = false;
-  } else {
-    document.querySelectorAll('.card').forEach(card => {
-      card.classList.add('no-animation');
-      
-    });
-  }
+
 }
 
 function renderNoSession() {
   app.innerHTML = Layout.renderMain(`
-    <div class="flex items-center justify-center h-full">
+    <div class="empty-center">
       <div class="empty-state large">
         <i class="fas fa-lock"></i>
         <h2>Tidak Ada Shift Aktif</h2>
@@ -211,6 +181,13 @@ function selectCategory(c) {
 
   state.selectedCategory = c;
   renderKasir();
+  setTimeout(() => {
+    const grid = document.getElementById('menu-grid-container');
+    if (!grid) return;
+    grid.classList.remove('category-enter');
+    void grid.offsetWidth;
+    grid.classList.add('category-enter');
+  }, 50);
 }
 
 function cekKetersediaanBahan(menu, qty = 1) {
@@ -322,6 +299,14 @@ async function pilihMeja() {
   });
 }
 
+window.renderKasir = renderKasir;
+window.selectCategory = selectCategory;
+window.addToCart = addToCart;
+window.changeQty = changeQty;
+window.getTotal = getTotal;
+window.setPaymentMethod = setPaymentMethod;
+window.pilihMeja = pilihMeja;
+
 async function bayar() {
   if (!state.currentSession) { bukaShift(); return; }
   if (!state.selectedTable) { Utils.showToast("Pilih meja!", 'warning'); return; }
@@ -397,7 +382,6 @@ async function bayar() {
     Utils.showToast("Transaksi berhasil!");
     renderKasir();
   } catch (err) {
-    console.error('Transaksi error:', err);
     Utils.showToast("" + err.message, 'error');
   }
 }
@@ -438,8 +422,6 @@ async function showPaymentModal() {
   `;
 
   document.body.appendChild(modal);
-
-  let cashTimeout, qrisTimeout;
 
   window.selectPaymentMethod = function (method) {
     state.selectedPaymentMethod = method;
@@ -493,7 +475,6 @@ async function showPaymentModal() {
         }
     } catch (error) {
         Utils.setButtonLoading(btn, false);
-        console.error('processPayment error:', error);
         Utils.showToast('Gagal proses pembayaran: ' + error.message, 'error');
     }
   });

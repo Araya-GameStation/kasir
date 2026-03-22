@@ -108,7 +108,6 @@ async function updateAllProductStocks() {
         try {
             await batch.commit();
         } catch (error) {
-            console.error('updateAllProductStocks error:', error);
         }
     }
 }
@@ -123,7 +122,7 @@ function startRealtimePengeluaran() {
             if (document.getElementById('modal-pengeluaran')) {
                 window.refreshListPengeluaran?.();
             }
-        }, err => console.error("pengeluaran listener:", err));
+        });
     addListener(unsubscribe);
 }
 

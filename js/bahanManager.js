@@ -6,8 +6,8 @@ function renderBahanManager() {
     const sortedBahan = SortableTable.sort(state.rawMaterials, 'bahan');
     const content = `
     <div class="stack-y">
-      <div class="flex justify-between items-center">
-        <h2 class="text-2xl font-bold"><i class="fas fa-boxes text-primary mr-2"></i> Bahan Baku</h2>
+      <div class="row-between">
+        <h2 class="text-heading fw-bold"><i class="fas fa-boxes text-primary mr-2"></i> Bahan Baku</h2>
         <div class="badge-group">
           <span class="badge badge-system">Total: ${state.rawMaterials.length}</span>
           <span class="badge badge-warning">Menipis: ${lowStockMaterials.length}</span>
@@ -15,7 +15,7 @@ function renderBahanManager() {
       </div>
       ${lowStockMaterials.length > 0 ? `
         <div class="alert-warning-box">
-          <i class="fas fa-exclamation-triangle mr-2" style="color:var(--warning)"></i>
+          <i class="fas fa-exclamation-triangle mr-2 icon-warning"></i>
           Stok menipis: ${lowStockMaterials.slice(0, 5).map(b => `${b.name} (${b.stock} ${b.satuan})`).join(', ')}
           ${lowStockMaterials.length > 5 ? ` +${lowStockMaterials.length - 5} lainnya` : ''}
         </div>
@@ -23,33 +23,33 @@ function renderBahanManager() {
       <button class="btn btn-primary" onclick="showAddBahanModal()">
         <i class="fas fa-plus"></i> Tambah Bahan
       </button>
-      <table class="w-full">
+      <table class="table-full">
         <thead class="settings-table-head">
           <tr>
-            <th class="p-3 text-left cursor-pointer" onclick="sortBahan('name')">
+            <th class="td-base text-left cursor-pointer" onclick="sortBahan('name')">
               Nama <i class="fas ${SortableTable.getSortIcon('bahan', 'name')}"></i>
             </th>
-            <th class="p-3 text-left cursor-pointer" onclick="sortBahan('stock')">
+            <th class="td-base text-left cursor-pointer" onclick="sortBahan('stock')">
               Stok <i class="fas ${SortableTable.getSortIcon('bahan', 'stock')}"></i>
             </th>
-            <th class="p-3 text-left">Min Stok</th>
-            <th class="p-3 text-left">Supplier</th>
-            <th class="p-3 text-left">Aksi</th>
+            <th class="td-base text-left">Min Stok</th>
+            <th class="td-base text-left">Supplier</th>
+            <th class="td-base text-left">Aksi</th>
           </tr>
         </thead>
         <tbody>
           ${sortedBahan.map(b => `
             <tr class="neu-table-row">
-              <td class="p-3 font-medium">${b.name}</td>
-              <td class="p-3">
-                <span class="${b.stock <= (b.minStock || 5) ? 'text-danger font-bold' : ''}">
+              <td class="td-base td-medium">${b.name}</td>
+              <td class="td-base">
+                <span class="${b.stock <= (b.minStock || 5) ? 'text-danger fw-bold' : ''}">
                   ${b.stock} ${b.satuan || 'pcs'}
                 </span>
               </td>
-              <td class="p-3">${b.minStock || 5} ${b.satuan || 'pcs'}</td>
-              <td class="p-3">${b.supplier || '-'}</td>
-              <td class="p-3">
-                <button class="btn-icon-sm btn-icon-success" onclick="tambahStokBahan('${b.id}')" title="Tambah Stok">
+              <td class="td-base">${b.minStock || 5} ${b.satuan || 'pcs'}</td>
+              <td class="td-base">${b.supplier || '-'}</td>
+              <td class="td-base">
+                <button class="btn-icon-sm btn-icon-success" onclick="const b=this;Utils.setButtonLoading(b,true);tambahStokBahan('${b.id}').finally(()=>Utils.setButtonLoading(b,false))" title="Tambah Stok">
                   <i class="fas fa-plus-circle"></i>
                 </button>
                 <button class="btn-icon-sm btn-icon-warning" onclick="kurangiStokBahanManual('${b.id}')" title="Kurangi Stok">
@@ -89,7 +89,7 @@ async function showAddBahanModal() {
         content: `
       <div class="form-group">
         <label class="form-label">Nama Bahan <span class="text-danger">*</span></label>
-        <input type="text" id="bahanName" class="form-input" placeholder="Contoh: Tepung Terigu" autofocus>
+        <input type="text" id="bahanName" class="form-input" placeholder="Contoh: Telur" autofocus>
       </div>
       <div class="form-group">
         <label class="form-label">Satuan</label>
@@ -154,7 +154,6 @@ async function showAddBahanModal() {
         delete window._bahanMinStock;
         delete window._bahanSupplier;
     } catch (error) {
-        console.error('Error tambah bahan:', error);
         Utils.showToast("Gagal: " + error.message, 'error');
     }
 }
@@ -198,7 +197,7 @@ async function tambahStokBahan(id) {
     window.closeTambahStokModal = function () {
         const modal = document.getElementById('tambah-stok-modal');
         if (modal) {
-            modal.style.animation = 'fadeOut 0.2s ease forwards';
+            modal.classList.add('fade-out');
             setTimeout(() => {
                 if (modal.parentNode) modal.remove();
             }, 200);
@@ -242,7 +241,6 @@ async function tambahStokBahan(id) {
             closeTambahStokModal();
             renderBahanManager();
         } catch (error) {
-            console.error('Error tambah stok:', error);
             if (error.code === 'permission-denied') {
                 Utils.showToast("Tidak punya izin. Periksa Firestore Rules", 'error');
             } else {
@@ -291,7 +289,7 @@ async function kurangiStokBahanManual(id) {
     window.closeKurangStokModal = function () {
         const modal = document.getElementById('kurang-stok-modal');
         if (modal) {
-            modal.style.animation = 'fadeOut 0.2s ease forwards';
+            modal.classList.add('fade-out');
             setTimeout(() => {
                 if (modal.parentNode) modal.remove();
             }, 200);
@@ -338,7 +336,6 @@ async function kurangiStokBahanManual(id) {
             closeKurangStokModal();
             renderBahanManager();
         } catch (error) {
-            console.error('Error kurangi stok:', error);
             Utils.showToast("Gagal: " + error.message, 'error');
         }
     };
@@ -388,7 +385,7 @@ async function editBahan(id) {
     window.closeEditBahanModal = function () {
         const modal = document.getElementById('edit-bahan-modal');
         if (modal) {
-            modal.style.animation = 'fadeOut 0.2s ease forwards';
+            modal.classList.add('fade-out');
             setTimeout(() => {
                 if (modal.parentNode) modal.remove();
             }, 200);
@@ -416,7 +413,6 @@ async function editBahan(id) {
             closeEditBahanModal();
             renderBahanManager();
         } catch (error) {
-            console.error('Error edit bahan:', error);
             Utils.showToast("Gagal: " + error.message, 'error');
         }
     };
@@ -437,7 +433,6 @@ async function hapusBahan(id) {
         }
         renderBahanManager();
     } catch (error) {
-        console.error('Error hapus bahan:', error);
         Utils.showToast("Gagal: " + error.message, 'error');
     }
 }

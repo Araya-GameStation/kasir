@@ -26,8 +26,8 @@ function renderHistory() {
     const content = `
     <div class="stack-y">
       <div class="session-header">
-        <div style="display:flex;align-items:center;gap:10px;">
-          <span class="session-badge" style="box-shadow:var(--neu-inset);color:var(--primary-light);">SHIFT ${state.currentSession.shift}</span>
+        <div class="session-header-row">
+          <span class="session-badge session-badge-primary">SHIFT ${state.currentSession.shift}</span>
         </div>
         <span>Buka: ${(() => { const wb = state.currentSession.waktuBuka; const d = wb?.seconds ? new Date(wb.seconds * 1000) : wb?.toDate ? wb.toDate() : new Date(wb); return isNaN(d) ? "-" : d.toLocaleString("id-ID"); })()}</span>
       </div>
@@ -72,7 +72,7 @@ function renderHistory() {
           ${state.selectedHistory.size === state.transactions.length ? 'Batal Pilih' : 'Pilih Semua'}
         </button>
         <button class="btn btn-secondary ${state.selectedHistory.size > 0 ? 'btn-danger' : ''}" 
-                onclick="deleteSelected()" ${state.selectedHistory.size === 0 ? 'disabled' : ''}>
+                onclick="const b=this;Utils.setButtonLoading(b,true);deleteSelected().finally(()=>Utils.setButtonLoading(b,false))" ${state.selectedHistory.size === 0 ? 'disabled' : ''}>
           <i class="fas fa-trash"></i> Hapus ${state.selectedHistory.size > 0 ? `(${state.selectedHistory.size})` : ''}
         </button>
         <button class="btn btn-warning" onclick="const b=this;Utils.setButtonLoading(b,true);cetakRekapSesi().finally(()=>Utils.setButtonLoading(b,false))">
@@ -82,19 +82,19 @@ function renderHistory() {
       <h3><i class="fas fa-history"></i> Riwayat Transaksi</h3>
       ${state.transactions.length === 0 ?
             '<p class="text-center text-muted">Belum ada transaksi</p>' :
-            `<table class="w-full">
+            `<table class="table-full">
         <thead class="neu-table-head">
           <tr>
-            <th class="p-3 text-left cursor-pointer" onclick="sortTransactions('date')">
+            <th class="td-base text-left cursor-pointer" onclick="sortTransactions('date')">
               Waktu <i class="fas ${SortableTable.getSortIcon('transactions', 'date')}"></i>
             </th>
-            <th class="p-3 text-left cursor-pointer" onclick="sortTransactions('mejaNama')">
+            <th class="td-base text-left cursor-pointer" onclick="sortTransactions('mejaNama')">
               Meja <i class="fas ${SortableTable.getSortIcon('transactions', 'mejaNama')}"></i>
             </th>
-            <th class="p-3 text-left cursor-pointer" onclick="sortTransactions('total')">
+            <th class="td-base text-left cursor-pointer" onclick="sortTransactions('total')">
               Total <i class="fas ${SortableTable.getSortIcon('transactions', 'total')}"></i>
             </th>
-            <th class="p-3 text-left">Aksi</th>
+            <th class="td-base text-left">Aksi</th>
           </tr>
         </thead>
         <tbody>
@@ -102,14 +102,14 @@ function renderHistory() {
                 const tgl = new Date(t.date.seconds ? t.date.seconds * 1000 : t.date);
                 return `
               <tr class="neu-table-row">
-                <td class="p-3">
+                <td class="td-base">
                   <input type="checkbox" ${state.selectedHistory.has(t.id) ? 'checked' : ''} 
                          onchange="toggleSelect('${t.id}')" onclick="event.stopPropagation()">
                   <span class="ml-2">${tgl.toLocaleTimeString('id-ID')}</span>
                 </td>
-                <td class="p-3">${t.mejaNama || 'Take Away'}</td>
-                <td class="p-3 font-bold text-primary">Rp ${Utils.formatRupiah(t.total)}</td>
-                <td class="p-3">
+                <td class="td-base">${t.mejaNama || 'Take Away'}</td>
+                <td class="td-base fw-bold text-primary">Rp ${Utils.formatRupiah(t.total)}</td>
+                <td class="td-base">
                   <button class="btn btn-icon-sm" onclick="showDetailModal('${t.id}'); event.stopPropagation()">
                     <i class="fas fa-eye"></i>
                   </button>
@@ -228,7 +228,7 @@ function showDetailModal(trxId) {
 
       <div class="modal-footer-actions">
         <button class="btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">Tutup</button>
-        <button class="btn btn-primary" onclick="reprintReceipt('${trx.id}'); this.closest('.modal-overlay').remove()">
+        <button class="btn btn-primary" onclick="const b=this;Utils.setButtonLoading(b,true);reprintReceipt('${trx.id}').finally(()=>{Utils.setButtonLoading(b,false);const mo=b.closest('.modal-overlay');if(mo)mo.remove()})">
           <i class="fas fa-print"></i> Cetak Ulang
         </button>
       </div>
@@ -296,7 +296,6 @@ async function reprintReceipt(trxId) {
         if (!trx) return;
         if (typeof window.printStruk === 'function') await window.printStruk(trx);
     } catch (error) {
-        console.error('reprintReceipt error:', error);
         Utils.showToast('Gagal cetak ulang: ' + error.message, 'error');
     }
 }
@@ -311,7 +310,6 @@ async function cetakRekapSesi() {
             await window.printRekapSesi(state.currentSession, state.transactions);
         }
     } catch (error) {
-        console.error('cetakRekapSesi error:', error);
         Utils.showToast('Gagal cetak rekap: ' + error.message, 'error');
     }
 }

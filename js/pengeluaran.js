@@ -14,10 +14,10 @@ function bukaModalPengeluaran() {
     modal.className = 'modal-overlay';
     modal.id = 'modal-pengeluaran';
     modal.innerHTML = `
-      <div class="modal" style="max-width:480px;width:90%;">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
-          <h3 style="margin:0;display:flex;align-items:center;gap:8px;">
-            <i class="fas fa-money-bill-wave" style="color:var(--danger)"></i>
+      <div class="modal pengeluaran-modal">
+        <div class="pengeluaran-modal-header">
+          <h3>
+            <i class="fas fa-money-bill-wave icon-danger"></i>
             Pengeluaran
           </h3>
           <button class="btn-icon-sm" onclick="tutupModalPengeluaran()" title="Tutup">
@@ -25,14 +25,12 @@ function bukaModalPengeluaran() {
           </button>
         </div>
 
-        <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;">
-          <input type="text" id="inputNamaPengeluaran" class="form-input"
+        <div class="pengeluaran-input-row">
+          <input type="text" id="inputNamaPengeluaran" class="form-input pengeluaran-input-nama"
                  placeholder="Nama pengeluaran..."
-                 style="flex:2;min-width:140px;"
                  onkeydown="if(event.key==='Enter')document.getElementById('inputNominalPengeluaran').focus()">
-          <input type="number" id="inputNominalPengeluaran" class="form-input"
-                 placeholder="Nominal (Rp)"
-                 style="flex:1;min-width:120px;"
+          <input type="number" id="inputNominalPengeluaran" class="form-input pengeluaran-input-nominal"
+                 placeholder="Harga..."
                  onkeydown="if(event.key==='Enter'){const b=document.getElementById('btnTambahPengeluaran');Utils.setButtonLoading(b,true);tambahPengeluaran().finally(()=>Utils.setButtonLoading(b,false))}">
           <button id="btnTambahPengeluaran" class="btn btn-primary"
                   onclick="const b=this;Utils.setButtonLoading(b,true);tambahPengeluaran().finally(()=>Utils.setButtonLoading(b,false))">
@@ -40,13 +38,13 @@ function bukaModalPengeluaran() {
           </button>
         </div>
 
-        <div id="list-pengeluaran" style="max-height:300px;overflow-y:auto;">
+        <div id="list-pengeluaran" class="pengeluaran-list">
           ${renderListPengeluaran(list)}
         </div>
 
-        <div class="pengeluaran-total-row" style="${list.length > 0 ? '' : 'display:none'}margin-top:14px;padding-top:14px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;font-weight:700;">
+        <div class="pengeluaran-total-row ${list.length > 0 ? '' : 'hidden-badge'}">
           <span>Total Pengeluaran</span>
-          <span style="color:var(--danger);font-size:16px;">Rp ${Utils.formatRupiah(total)}</span>
+          <span class="pengeluaran-total-nominal">Rp ${Utils.formatRupiah(total)}</span>
         </div>
       </div>
     `;
@@ -61,17 +59,17 @@ function bukaModalPengeluaran() {
 
 function renderListPengeluaran(list) {
     if (!list || list.length === 0) {
-        return '<p class="text-muted" style="text-align:center;padding:24px 0;font-size:13px;">Belum ada pengeluaran</p>';
+        return '<p class="text-muted pengeluaran-empty">Belum ada pengeluaran</p>';
     }
     return list.map(p => `
-      <div class="recap-item" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;" data-id="${p.id}">
-        <div style="flex:1;min-width:0;">
-          <div class="recap-name" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${p.nama}</div>
-          <div style="font-size:12px;color:var(--danger);font-weight:600;">
+      <div class="recap-item recap-pengeluaran-item" data-id="${p.id}">
+        <div class="recap-pengeluaran-item-left">
+          <div class="recap-name recap-pengeluaran-name">${p.nama}</div>
+          <div class="recap-pengeluaran-meta">
             Rp ${Utils.formatRupiah(p.nominal)}
           </div>
         </div>
-        <div style="display:flex;gap:6px;flex-shrink:0;margin-left:8px;">
+        <div class="recap-pengeluaran-actions">
           <button class="btn-icon-sm"
                   onclick="mulaiEditPengeluaran('${p.id}','${p.nama.replace(/'/g,"\\'").replace(/"/g,'&quot;')}',${p.nominal})"
                   title="Edit">
@@ -97,7 +95,7 @@ function refreshListPengeluaran() {
 
     const totalRow = document.querySelector('.pengeluaran-total-row');
     if (totalRow) {
-        totalRow.style.display = list.length > 0 ? 'flex' : 'none';
+        totalRow.classList.toggle('hidden-badge', list.length === 0);
         const span = totalRow.querySelector('span:last-child');
         if (span) span.textContent = 'Rp ' + Utils.formatRupiah(total);
     }
@@ -105,14 +103,14 @@ function refreshListPengeluaran() {
     const badge = document.getElementById('badge-pengeluaran');
     if (badge) {
         badge.textContent = list.length;
-        badge.style.display = list.length > 0 ? '' : 'none';
+        badge.classList.toggle('hidden-badge', list.length === 0);
     }
 }
 
 function tutupModalPengeluaran() {
     const modal = document.getElementById('modal-pengeluaran');
     if (modal) {
-        modal.style.animation = 'fadeOut 0.2s ease forwards';
+        modal.classList.add('fade-out');
         setTimeout(() => modal.remove(), 200);
     }
 }
@@ -139,7 +137,6 @@ async function tambahPengeluaran() {
         document.getElementById('inputNamaPengeluaran')?.focus();
         Utils.showToast('Pengeluaran ditambahkan', 'success');
     } catch (error) {
-        console.error('tambahPengeluaran:', error);
         Utils.showToast('Gagal: ' + error.message, 'error');
     }
 }
@@ -151,17 +148,15 @@ function mulaiEditPengeluaran(id, namaLama, nominalLama) {
     if (!item) return;
 
     item.innerHTML = `
-      <div style="display:flex;gap:8px;width:100%;flex-wrap:wrap;">
-        <input type="text" id="editNama_${id}" class="form-input" value="${namaLama}"
-               style="flex:2;min-width:120px;padding:6px 10px;">
-        <input type="number" id="editNominal_${id}" class="form-input" value="${nominalLama}"
-               style="flex:1;min-width:100px;padding:6px 10px;"
+      <div class="pengeluaran-edit-row">
+        <input type="text" id="editNama_${id}" class="form-input pengeluaran-edit-input-nama" value="${namaLama}">
+        <input type="number" id="editNominal_${id}" class="form-input pengeluaran-edit-input-nominal" value="${nominalLama}"
                onkeydown="if(event.key==='Enter'){const b=this.nextElementSibling;Utils.setButtonLoading(b,true);simpanEditPengeluaran('${id}').finally(()=>Utils.setButtonLoading(b,false))}">
-        <button class="btn btn-primary" style="padding:6px 12px;"
+        <button class="btn btn-primary pengeluaran-edit-btn-save"
                 onclick="const b=this;Utils.setButtonLoading(b,true);simpanEditPengeluaran('${id}').finally(()=>Utils.setButtonLoading(b,false))">
           <i class="fas fa-check"></i>
         </button>
-        <button class="btn-icon-sm" onclick="refreshListPengeluaran()" title="Batal" style="align-self:center;">
+        <button class="btn-icon-sm pengeluaran-edit-btn-cancel" onclick="refreshListPengeluaran()" title="Batal">
           <i class="fas fa-times"></i>
         </button>
       </div>
@@ -182,7 +177,6 @@ async function simpanEditPengeluaran(id) {
         await dbCloud.collection('pengeluaran').doc(id).update({ nama, nominal });
         Utils.showToast('Pengeluaran diperbarui', 'success');
     } catch (error) {
-        console.error('simpanEditPengeluaran:', error);
         Utils.showToast('Gagal: ' + error.message, 'error');
     }
 }
@@ -193,7 +187,6 @@ async function hapusPengeluaran(id) {
         await dbCloud.collection('pengeluaran').doc(id).delete();
         Utils.showToast('Pengeluaran dihapus', 'success');
     } catch (error) {
-        console.error('hapusPengeluaran:', error);
         Utils.showToast('Gagal: ' + error.message, 'error');
     }
 }
