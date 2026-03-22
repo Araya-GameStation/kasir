@@ -24,20 +24,6 @@
     tailwind.config = { darkMode: 'class' }
   </script>
 
-  <script>
-    if (localStorage.getItem('darkMode') === 'true') {
-      document.documentElement.classList.add('dark');
-    }
-  </script>
-
-  <script>
-    function updateThemeColor() {
-      const color = getComputedStyle(document.documentElement).getPropertyValue('--primary-light').trim();
-      const meta = document.querySelector('meta[name="theme-color"]');
-      if (meta && color) meta.setAttribute('content', color);
-    }
-    document.addEventListener('DOMContentLoaded', updateThemeColor);
-  </script>
 </head>
 
 <body>
@@ -70,12 +56,11 @@
   </script>
 
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.21/lodash.min.js"></script>
   <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js" defer></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" defer></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js" defer></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js" defer></script>
 
+  <script src="js/init.js" defer></script>
   <script src="js/utils.js" defer></script>
   <script src="js/layout.js" defer></script>
   <script src="js/sortableTable.js" defer></script>
@@ -90,15 +75,6 @@
   <script src="js/bahanManager.js" defer></script>
   <script src="js/settings.js" defer></script>
 
-  <script>
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('service-worker.js')
-          .then(reg => console.log('✅ Service Worker terdaftar'))
-          .catch(err => console.log('❌ Service Worker gagal:', err));
-      });
-    }
-  </script>
 </body>
 
 </html>
