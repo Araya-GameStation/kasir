@@ -1,7 +1,7 @@
 {
   "name": "Kasir Garis Waktu",
   "short_name": "GarisWaktu",
-  "description": "Sistem Kasir dengan manajemen stok bahan baku dan resep",
+  "description": "Sistem Kasir dengan manajemen stok, bahan baku, resep, dan laporan",
   "start_url": "index.html",
   "display": "standalone",
   "background_color": "#e8e7f5",
@@ -10,7 +10,43 @@
   "icons": [
     {
       "src": "logo.png",
+      "sizes": "72x72",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "logo.png",
+      "sizes": "96x96",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "logo.png",
+      "sizes": "128x128",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "logo.png",
+      "sizes": "144x144",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "logo.png",
+      "sizes": "152x152",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "logo.png",
       "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "logo.png",
+      "sizes": "384x384",
       "type": "image/png",
       "purpose": "any maskable"
     },
