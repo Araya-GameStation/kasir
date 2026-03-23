@@ -173,11 +173,11 @@ async function tutupShift() {
         <div><span>CASH</span><strong> Rp ${Utils.formatRupiah(totalCash)}</strong></div>
         <div><span>QRIS</span><strong> Rp ${Utils.formatRupiah(totalQRIS)}</strong></div>
         <div><span>Total</span><strong> Rp ${Utils.formatRupiah(totalPenjualan)}</strong></div>
-        \${totalPengeluaran > 0 ? \`
+        ${totalPengeluaran > 0 ? `
         <div class="session-summary-divider">
-          <div><span>Pengeluaran</span><strong class="session-summary-pengeluaran"> -Rp \${Utils.formatRupiah(totalPengeluaran)}</strong></div>
-          <div><span>Kas Bersih</span><strong class="session-summary-kas"> Rp \${Utils.formatRupiah(kasBersih)}</strong></div>
-        </div>\` : ''}
+          <div><span>Pengeluaran</span><strong class="session-summary-pengeluaran"> -Rp ${Utils.formatRupiah(totalPengeluaran)}</strong></div>
+          <div><span>Kas Bersih</span><strong class="session-summary-kas"> Rp ${Utils.formatRupiah(kasBersih)}</strong></div>
+        </div>` : ''}
       </div>
     `,
         buttons: [

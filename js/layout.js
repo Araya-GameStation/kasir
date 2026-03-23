@@ -95,6 +95,10 @@ window.Layout = {
               <span class="header-shift-dot"></span>
               <span>Shift ${window.state.currentSession.shift}</span>
             </div>
+            <button onclick="window.tutupShift()" class="btn-tutup-shift" id="btn-tutup-shift" title="Tutup Shift">
+              <i class="fas fa-power-off"></i>
+              <span>Tutup Shift</span>
+            </button>
             <span class="header-email">
               ${window.state.user?.email}
             </span>

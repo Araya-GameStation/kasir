@@ -130,9 +130,9 @@ function renderSettingsTab() {
           <tbody>
             ${mejaList.map(m => `
               <tr>
-                <td>${m.nomor}</td>
-                <td>${m.nama}</td>
-                <td>
+                <td class="td-base">${m.nomor}</td>
+                <td class="td-base">${m.nama}</td>
+                <td class="td-base">
                   <span class="badge ${m.aktif ? 'badge-success' : 'badge-danger'}">
                     ${m.aktif ? 'Aktif' : 'Nonaktif'}
                   </span>
@@ -156,27 +156,29 @@ function renderSettingsTab() {
     `;
     }
     if (currentSettingsTab === 'backup') {
+        const hasActiveShift = !!state.currentSession;
         return `
       <div class="settings-card">
         <h3><i class="fas fa-database"></i> Backup & Restore</h3>
         <div class="backup-grid">
           <div class="backup-card">
             <div class="backup-icon">
-              <i class="fas fa-file-excel"></i>
+              <i class="fas fa-file-pdf"></i>
             </div>
-            <h4>Export Excel</h4>
-            <p>Download laporan ringkasan</p>
-            <button class="btn btn-primary" onclick="exportToExcel()">
+            <h4>Export PDF (Shift Aktif)</h4>
+            <p>Download laporan shift yang sedang berjalan</p>
+            <button class="btn btn-primary" onclick="const b=this;Utils.setButtonLoading(b,true);exportToPDFShift().finally(()=>Utils.setButtonLoading(b,false))" ${!hasActiveShift ? 'disabled' : ''}>
               <i class="fas fa-download"></i> Export
             </button>
+            ${!hasActiveShift ? '<small class="text-muted mt-1">*Buka shift terlebih dahulu</small>' : ''}
           </div>
           <div class="backup-card">
             <div class="backup-icon">
               <i class="fas fa-file-pdf"></i>
             </div>
-            <h4>Export PDF</h4>
-            <p>Download laporan ringkasan</p>
-            <button class="btn btn-primary" onclick="exportToPDF()">
+            <h4>Export PDF (Semua Data)</h4>
+            <p>Download laporan semua transaksi</p>
+            <button class="btn btn-primary" onclick="const b=this;Utils.setButtonLoading(b,true);exportToPDFAll().finally(()=>Utils.setButtonLoading(b,false))">
               <i class="fas fa-download"></i> Export
             </button>
           </div>
@@ -342,167 +344,130 @@ async function saveMejaSettings() {
     }
 }
 
-function exportToExcel() {
-    try {
-        const wb = XLSX.utils.book_new();
-
-        const totalTransaksi   = state.allTransactions?.length || 0;
-        const totalPenjualan   = state.allTransactions?.reduce((s, t) => s + t.total, 0) || 0;
-        const totalCash        = state.allTransactions?.reduce((s, t) => s + (t.cashAmount || (t.metodeBayar === 'tunai' ? t.total : 0)), 0) || 0;
-        const totalQRIS        = state.allTransactions?.reduce((s, t) => s + (t.qrisAmount || (t.metodeBayar === 'qris' ? t.total : 0)), 0) || 0;
-        const totalPengeluaran = state.pengeluaran?.reduce((s, p) => s + (p.nominal || 0), 0) || 0;
-        const kasBersih        = totalCash - totalPengeluaran;
-
-        const rows = [];
-
-        rows.push({ A: 'LAPORAN GARIS WAKTU' });
-        rows.push({ A: `Dicetak: ${new Date().toLocaleString('id-ID')}` });
-        rows.push({});
-
-        rows.push({ A: '== RINGKASAN ==' });
-        rows.push({ A: 'Total Transaksi',   B: totalTransaksi });
-        rows.push({ A: 'Total Cash',        B: totalCash });
-        rows.push({ A: 'Total QRIS',        B: totalQRIS });
-        rows.push({ A: 'Total Penjualan',   B: totalPenjualan });
-        if (totalPengeluaran > 0) {
-            rows.push({ A: 'Total Pengeluaran', B: -totalPengeluaran });
-            rows.push({ A: 'Kas Bersih',        B: kasBersih });
-        }
-        rows.push({});
-
-        rows.push({ A: '== PRODUK TERLARIS ==' });
-        rows.push({ A: 'Nama Produk', B: 'Jumlah Terjual', C: 'Total Penjualan' });
-        const produkTerjual = {};
-        state.allTransactions?.forEach(t => {
-            t.items.forEach(i => {
-                if (!produkTerjual[i.name]) produkTerjual[i.name] = { qty: 0, total: 0 };
-                produkTerjual[i.name].qty   += i.qty;
-                produkTerjual[i.name].total += i.price * i.qty;
-            });
-        });
-        Object.entries(produkTerjual)
-            .sort((a, b) => b[1].qty - a[1].qty)
-            .forEach(([nama, data]) => {
-                rows.push({ A: nama, B: data.qty, C: data.total });
-            });
-        rows.push({});
-
-        const pengeluaranList = state.pengeluaran || [];
-        if (pengeluaranList.length > 0) {
-            rows.push({ A: '== PENGELUARAN ==' });
-            rows.push({ A: 'Nama Pengeluaran', B: 'Nominal' });
-            pengeluaranList.forEach(p => {
-                rows.push({ A: p.nama, B: p.nominal });
-            });
-            rows.push({ A: 'Total', B: totalPengeluaran });
-            rows.push({});
-        }
-
-        const lowStock = state.rawMaterials?.filter(b => b.stock <= (b.minStock || 5)) || [];
-        rows.push({ A: '== BAHAN STOK MENIPIS ==' });
-        if (lowStock.length > 0) {
-            rows.push({ A: 'Nama Bahan', B: 'Stok', C: 'Min. Stok', D: 'Satuan' });
-            lowStock.forEach(b => {
-                rows.push({ A: b.name, B: b.stock, C: b.minStock || 5, D: b.satuan || 'pcs' });
-            });
-        } else {
-            rows.push({ A: 'Semua stok aman' });
-        }
-
-        const ws = XLSX.utils.json_to_sheet(rows, { header: ['A','B','C','D'], skipHeader: true });
-
-        ws['!cols'] = [
-            { wch: 35 },
-            { wch: 20 },
-            { wch: 20 },
-            { wch: 12 },
-        ];
-
-        XLSX.utils.book_append_sheet(wb, ws, 'Laporan');
-        XLSX.writeFile(wb, `gariswaktu_laporan_${new Date().toISOString().slice(0, 10)}.xlsx`);
-        Utils.showToast('Excel diekspor');
-    } catch (error) {
-        Utils.showToast('Gagal: ' + error.message, 'error');
+async function exportToPDFShift() {
+    if (!state.currentSession) {
+        Utils.showToast("Tidak ada shift aktif!", 'warning');
+        return;
     }
+    
+    const transactions = state.transactions.filter(t => t.sessionId === state.currentSession.id);
+    const totalTransaksi = transactions.length;
+    const totalPenjualan = transactions.reduce((s, t) => s + t.total, 0);
+    const totalCash = transactions.reduce((s, t) => s + (t.cashAmount || (t.metodeBayar === 'tunai' ? t.total : 0)), 0);
+    const totalQRIS = transactions.reduce((s, t) => s + (t.qrisAmount || (t.metodeBayar === 'qris' ? t.total : 0)), 0);
+    const totalPengeluaran = state.pengeluaran?.filter(p => p.sessionId === state.currentSession.id)?.reduce((s, p) => s + (p.nominal || 0), 0) || 0;
+    const cashBersih = totalCash - totalPengeluaran;
+    const pengeluaranList = state.pengeluaran?.filter(p => p.sessionId === state.currentSession.id) || [];
+    
+    const produkCount = {};
+    transactions.forEach(t => {
+        t.items.forEach(i => {
+            if (!produkCount[i.name]) produkCount[i.name] = { qty: 0, total: 0 };
+            produkCount[i.name].qty += i.qty;
+            produkCount[i.name].total += i.price * i.qty;
+        });
+    });
+    const topProducts = Object.entries(produkCount).sort((a, b) => b[1].qty - a[1].qty);
+    
+    const waktuBuka = state.currentSession.waktuBuka?.seconds ? new Date(state.currentSession.waktuBuka.seconds * 1000) : new Date(state.currentSession.waktuBuka);
+    
+    await generatePDF({
+        title: `LAPORAN SHIFT ${state.currentSession.shift}`,
+        subtitle: `Kasir: ${state.currentSession.kasir} | Dicetak: ${new Date().toLocaleString('id-ID')}`,
+        totalTransaksi,
+        totalPenjualan,
+        totalCash,
+        totalQRIS,
+        totalPengeluaran,
+        cashBersih,
+        pengeluaranList,
+        topProducts,
+        filename: `gariswaktu_laporan_shift_${state.currentSession.shift}_${new Date().toISOString().slice(0, 10)}.pdf`
+    });
 }
 
-function exportToPDF() {
+async function exportToPDFAll() {
+    const totalTransaksi = state.allTransactions?.length || 0;
+    const totalPenjualan = state.allTransactions?.reduce((s, t) => s + t.total, 0) || 0;
+    const totalCash = state.allTransactions?.reduce((s, t) => s + (t.cashAmount || (t.metodeBayar === 'tunai' ? t.total : 0)), 0) || 0;
+    const totalQRIS = state.allTransactions?.reduce((s, t) => s + (t.qrisAmount || (t.metodeBayar === 'qris' ? t.total : 0)), 0) || 0;
+    const totalPengeluaran = state.pengeluaran?.reduce((s, p) => s + (p.nominal || 0), 0) || 0;
+    const cashBersih = totalCash - totalPengeluaran;
+    const pengeluaranList = state.pengeluaran || [];
+    
+    const produkCount = {};
+    state.allTransactions?.forEach(t => {
+        t.items.forEach(i => {
+            if (!produkCount[i.name]) produkCount[i.name] = { qty: 0, total: 0 };
+            produkCount[i.name].qty += i.qty;
+            produkCount[i.name].total += i.price * i.qty;
+        });
+    });
+    const topProducts = Object.entries(produkCount).sort((a, b) => b[1].qty - a[1].qty);
+    
+    const lowStock = state.rawMaterials?.filter(b => b.stock <= (b.minStock || 5)) || [];
+    
+    await generatePDF({
+        title: 'LAPORAN HARIAN GARIS WAKTU',
+        subtitle: `Periode: Seluruh Shift | Dicetak: ${new Date().toLocaleString('id-ID')}`,
+        totalTransaksi,
+        totalPenjualan,
+        totalCash,
+        totalQRIS,
+        totalPengeluaran,
+        cashBersih,
+        pengeluaranList,
+        topProducts,
+        lowStock,
+        filename: `gariswaktu_laporan_harian_${new Date().toISOString().slice(0, 10)}.pdf`
+    });
+}
+
+async function generatePDF(data) {
     try {
         const { jsPDF } = window.jspdf;
-
-        const totalTransaksi   = state.allTransactions?.length || 0;
-        const totalPenjualan   = state.allTransactions?.reduce((s, t) => s + t.total, 0) || 0;
-        const totalCash        = state.allTransactions?.reduce((s, t) => s + (t.cashAmount || (t.metodeBayar === 'tunai' ? t.total : 0)), 0) || 0;
-        const totalQRIS        = state.allTransactions?.reduce((s, t) => s + (t.qrisAmount || (t.metodeBayar === 'qris' ? t.total : 0)), 0) || 0;
-        const totalPengeluaran = state.pengeluaran?.reduce((s, p) => s + (p.nominal || 0), 0) || 0;
-        const kasBersih        = totalCash - totalPengeluaran;
-        const pengeluaranList  = state.pengeluaran || [];
-        const lowStock         = state.rawMaterials?.filter(b => b.stock <= (b.minStock || 5)) || [];
-
-        const produkCount = {};
-        state.allTransactions?.forEach(t => {
-            t.items.forEach(i => {
-                if (!produkCount[i.name]) produkCount[i.name] = { qty: 0, total: 0 };
-                produkCount[i.name].qty   += i.qty;
-                produkCount[i.name].total += i.price * i.qty;
-            });
-        });
-        const topProducts = Object.entries(produkCount)
-            .sort((a, b) => b[1].qty - a[1].qty)
-            .slice(0, 10);
-
-        const ringkasanBody = [
-            ['Total Transaksi', `${totalTransaksi} transaksi`],
-            ['Total Cash',      `Rp ${Utils.formatRupiah(totalCash)}`],
-            ['Total Qris',      `Rp ${Utils.formatRupiah(totalQRIS)}`],
-            ['Total Penjualan', `Rp ${Utils.formatRupiah(totalPenjualan)}`],
-        ];
-        if (totalPengeluaran > 0) {
-            ringkasanBody.push(['Total Pengeluaran', `-Rp ${Utils.formatRupiah(totalPengeluaran)}`]);
-            ringkasanBody.push(['Cash Bersih', `Rp ${Utils.formatRupiah(kasBersih)}`]);
-        }
-
-        const rowH     = 7;
-        const headH    = 8;
+        
+        const rowH = 7;
+        const headH = 8;
         const sectionH = 12;
-        const headerH  = 30;
-
+        const headerH = 30;
+        
         let estH = headerH;
-        estH += sectionH + ringkasanBody.length * rowH;
-        estH += sectionH + (topProducts.length > 0 ? headH + topProducts.length * rowH : rowH);
-        if (pengeluaranList.length > 0) estH += sectionH + headH + pengeluaranList.length * rowH;
-        estH += sectionH + (lowStock.length > 0 ? headH + lowStock.length * rowH : rowH);
+        estH += sectionH + 5 * rowH;
+        estH += sectionH + (data.topProducts.length > 0 ? headH + data.topProducts.length * rowH : rowH);
+        if (data.pengeluaranList.length > 0) estH += sectionH + headH + data.pengeluaranList.length * rowH;
+        if (data.lowStock && data.lowStock.length > 0) estH += sectionH + headH + data.lowStock.length * rowH;
         estH += 20;
-
-        const PAGE_H    = 297;
-        const scale     = estH <= PAGE_H ? 1 : Math.max(0.45, PAGE_H / estH);
-        const fontSize  = s => Math.max(6, Math.round(s * scale));
-        const pad       = s => Math.max(1, s * scale);
-        const sp        = s => s * scale;
-
+        
+        const PAGE_H = 297;
+        const scale = estH <= PAGE_H ? 1 : Math.max(0.45, PAGE_H / estH);
+        const fontSize = s => Math.max(6, Math.round(s * scale));
+        const pad = s => Math.max(1, s * scale);
+        const sp = s => s * scale;
+        
         const doc = new jsPDF({ format: [210, PAGE_H] });
-        const PW  = 210;
-        const ML  = sp(14);
-        const MR  = sp(14);
-        let y     = sp(12);
-
+        const PW = 210;
+        const ML = sp(14);
+        const MR = sp(14);
+        let y = sp(12);
+        
         doc.setFontSize(fontSize(18));
         doc.setFont('helvetica', 'bold');
         doc.setTextColor(30, 58, 138);
-        doc.text('LAPORAN GARIS WAKTU', PW / 2, y, { align: 'center' });
+        doc.text(data.title, PW / 2, y, { align: 'center' });
         y += sp(7);
-
+        
         doc.setFontSize(fontSize(8));
         doc.setFont('helvetica', 'normal');
         doc.setTextColor(120, 120, 120);
-        doc.text(`Dicetak: ${new Date().toLocaleString('id-ID')}`, PW / 2, y, { align: 'center' });
+        doc.text(data.subtitle, PW / 2, y, { align: 'center' });
         y += sp(5);
-
+        
         doc.setDrawColor(30, 58, 138);
         doc.setLineWidth(0.4);
         doc.line(ML, y, PW - MR, y);
         y += sp(8);
-
+        
         const section = (label) => {
             doc.setFontSize(fontSize(11));
             doc.setFont('helvetica', 'bold');
@@ -510,15 +475,26 @@ function exportToPDF() {
             doc.text(label, ML, y);
             y += sp(6);
         };
-
+        
         const tableOpts = (extra) => ({
             styles: { fontSize: fontSize(8.5), cellPadding: pad(2.5) },
             margin: { left: ML, right: MR },
             tableWidth: PW - ML - MR,
             ...extra
         });
-
+        
         section('RINGKASAN');
+        const ringkasanBody = [
+            ['Total Transaksi', `${data.totalTransaksi} transaksi`],
+            ['Total Cash', `Rp ${Utils.formatRupiah(data.totalCash)}`],
+            ['Total Qris', `Rp ${Utils.formatRupiah(data.totalQRIS)}`],
+            ['Total Penjualan', `Rp ${Utils.formatRupiah(data.totalPenjualan)}`],
+        ];
+        if (data.totalPengeluaran > 0) {
+            ringkasanBody.push(['Total Pengeluaran', `-Rp ${Utils.formatRupiah(data.totalPengeluaran)}`]);
+            ringkasanBody.push(['Cash Bersih', `Rp ${Utils.formatRupiah(data.cashBersih)}`]);
+        }
+        
         doc.autoTable(tableOpts({
             startY: y,
             body: ringkasanBody,
@@ -528,7 +504,7 @@ function exportToPDF() {
             },
             alternateRowStyles: { fillColor: [245, 247, 255] },
             didParseCell(data) {
-                if (totalPengeluaran > 0) {
+                if (data.totalPengeluaran > 0) {
                     if (data.row.index === ringkasanBody.length - 2) data.cell.styles.textColor = [220, 38, 38];
                     if (data.row.index === ringkasanBody.length - 1) {
                         data.cell.styles.textColor = [5, 150, 105];
@@ -538,14 +514,14 @@ function exportToPDF() {
             },
         }));
         y = doc.lastAutoTable.finalY + sp(10);
-
-        section('PRODUK TERLARIS');
-        if (topProducts.length > 0) {
+        
+        section('PRODUK TERJUAL');
+        if (data.topProducts.length > 0) {
             const cw = PW - ML - MR;
             doc.autoTable(tableOpts({
                 startY: y,
                 head: [['Nama Produk', 'Terjual', 'Total Penjualan']],
-                body: topProducts.map(([name, data]) => [name, `${data.qty} pcs`, `Rp ${Utils.formatRupiah(data.total)}`]),
+                body: data.topProducts.map(([name, data]) => [name, `${data.qty} pcs`, `Rp ${Utils.formatRupiah(data.total)}`]),
                 headStyles: { fillColor: [30, 58, 138], fontStyle: 'bold', fontSize: fontSize(8.5) },
                 columnStyles: {
                     0: { cellWidth: cw * 0.55 },
@@ -562,14 +538,14 @@ function exportToPDF() {
             doc.text('Belum ada data penjualan', ML + sp(4), y);
             y += sp(10);
         }
-
-        if (pengeluaranList.length > 0) {
+        
+        if (data.pengeluaranList.length > 0) {
             section('PENGELUARAN');
             const cw = PW - ML - MR;
             doc.autoTable(tableOpts({
                 startY: y,
                 head: [['Nama Pengeluaran', 'Nominal']],
-                body: pengeluaranList.map(p => [p.nama, `Rp ${Utils.formatRupiah(p.nominal)}`]),
+                body: data.pengeluaranList.map(p => [p.nama, `Rp ${Utils.formatRupiah(p.nominal)}`]),
                 headStyles: { fillColor: [220, 38, 38], fontStyle: 'bold', fontSize: fontSize(8.5) },
                 columnStyles: {
                     0: { cellWidth: cw * 0.72 },
@@ -579,14 +555,14 @@ function exportToPDF() {
             }));
             y = doc.lastAutoTable.finalY + sp(10);
         }
-
-        section('BAHAN STOK MENIPIS');
-        if (lowStock.length > 0) {
+        
+        if (data.lowStock && data.lowStock.length > 0) {
+            section('BAHAN STOK MENIPIS');
             const cw = PW - ML - MR;
             doc.autoTable(tableOpts({
                 startY: y,
                 head: [['Nama Bahan', 'Stok', 'Min. Stok', 'Satuan']],
-                body: lowStock.map(b => [b.name, b.stock, b.minStock || 5, b.satuan || 'pcs']),
+                body: data.lowStock.map(b => [b.name, b.stock, b.minStock || 5, b.satuan || 'pcs']),
                 headStyles: { fillColor: [217, 119, 6], fontStyle: 'bold', fontSize: fontSize(8.5) },
                 columnStyles: {
                     0: { cellWidth: cw * 0.46 },
@@ -596,15 +572,10 @@ function exportToPDF() {
                 },
                 theme: 'striped',
             }));
-        } else {
-            doc.setFont('helvetica', 'normal');
-            doc.setFontSize(fontSize(9));
-            doc.setTextColor(5, 150, 105);
-            doc.text('Semua stok aman ✓', ML + sp(4), y);
         }
-
-        doc.save(`gariswaktu_laporan_${new Date().toISOString().slice(0, 10)}.pdf`);
-        Utils.showToast('PDF diekspor');
+        
+        doc.save(data.filename);
+        Utils.showToast('PDF berhasil diekspor');
     } catch (error) {
         Utils.showToast('Gagal: ' + error.message, 'error');
     }
@@ -822,8 +793,8 @@ window.tambahMeja = tambahMeja;
 window.toggleMejaStatus = toggleMejaStatus;
 window.hapusMeja = hapusMeja;
 window.sortMeja = sortMeja;
-window.exportToExcel = exportToExcel;
-window.exportToPDF = exportToPDF;
+window.exportToPDFShift = exportToPDFShift;
+window.exportToPDFAll = exportToPDFAll;
 window.importFromExcel = importFromExcel;
 window.downloadTemplateExcel = downloadTemplateExcel;
 window.resetRiwayatOnly = resetRiwayatOnly;
