@@ -70,8 +70,8 @@ window.Layout = {
               view === 'Settings' ? 'settings' : view);
 
     const viewMap = {
-        'Kasir': 'kasir', 'Riwayat': 'history',
-        'Bahan': 'bahanManager', 'Menu': 'menuManager', 'Pengaturan': 'settings'
+      'Kasir': 'kasir', 'Riwayat': 'history',
+      'Bahan': 'bahanManager', 'Menu': 'menuManager', 'Pengaturan': 'settings'
     };
     const targetView = viewMap[label] || label;
 
@@ -91,6 +91,9 @@ window.Layout = {
         </h1>
         ${window.state.currentSession ? `
           <div class="header-session-info">
+            <span class="header-email">
+              <i class="fas fa-user-circle me-1"></i> ${window.state.currentSession?.kasir || window.state.user?.email}
+            </span>
             <div class="header-shift-badge">
               <span class="header-shift-dot"></span>
               <span>Shift ${window.state.currentSession.shift}</span>
@@ -99,9 +102,6 @@ window.Layout = {
               <i class="fas fa-power-off"></i>
               <span>Tutup Shift</span>
             </button>
-            <span class="header-email">
-              ${window.state.user?.email}
-            </span>
           </div>
         ` : `
           <button onclick="const b=this;Utils.setButtonLoading(b,true);window.bukaShift().finally(()=>Utils.setButtonLoading(b,false))" class="btn-buka-shift">
@@ -124,7 +124,7 @@ window.Layout = {
     return titles[window.state.currentView] || 'GARIS WAKTU';
   }
 };
-window.toggleDarkMode = function() {
+window.toggleDarkMode = function () {
   const isDark = document.documentElement.classList.toggle('dark');
   localStorage.setItem('darkMode', isDark);
   if (typeof updateThemeColor === 'function') updateThemeColor();

@@ -17,6 +17,11 @@ function renderKasir() {
     state.lastMenuScroll = menuContainer.scrollTop;
   }
 
+  const cartBody = document.querySelector('.pos-cart-body');
+  if (cartBody) {
+    state.lastCartScroll = cartBody.scrollTop;
+  }
+
   const sortedCategories = [
     ...state.categories.filter(c => !c.system).sort((a, b) => a.name.localeCompare(b.name)),
     ...state.categories.filter(c => c.system)
@@ -70,23 +75,18 @@ function renderKasir() {
 
   app.innerHTML = Layout.renderMain(content);
 
+  const _catEl = document.getElementById('category-scroll-container');
+  if (_catEl && state.lastCategoryScroll > 0) _catEl.scrollLeft = state.lastCategoryScroll;
+
+  const _menuEl = document.getElementById('menu-scroll-container');
+  if (_menuEl && state.lastMenuScroll > 0) _menuEl.scrollTop = state.lastMenuScroll;
+
+  const _cartEl = document.querySelector('.pos-cart-body');
+  if (_cartEl && state.lastCartScroll > 0) _cartEl.scrollTop = state.lastCartScroll;
+
   requestAnimationFrame(() => {
     const mainEl = document.querySelector('main');
     if (mainEl) { mainEl.classList.add('main-kasir-override'); }
-  });
-
-  requestAnimationFrame(() => {
-    const newCategoryContainer = document.getElementById('category-scroll-container');
-    if (newCategoryContainer && state.lastCategoryScroll > 0) {
-      newCategoryContainer.scrollLeft = state.lastCategoryScroll;
-    }
-  });
-
-  requestAnimationFrame(() => {
-    const newMenuContainer = document.getElementById('menu-scroll-container');
-    if (newMenuContainer && state.lastMenuScroll > 0) {
-      newMenuContainer.scrollTop = state.lastMenuScroll;
-    }
   });
 }
 
@@ -109,6 +109,10 @@ function renderMenuItem(m) {
   const stokTersedia = stokOtomatis !== null ? stokOtomatis : (m.useStock ? m.stock : null);
   return `
     <div class="card hover-scale ${!stockOk.ok ? 'product-disabled' : ''}" onclick="addToCart('${m.id}')">
+      ${m.imageUrl
+      ? `<div class="card-img"><img src="${m.imageUrl}" alt="${m.name}" class="img-card-pos"></div>`
+      : `<div class="img-placeholder-pos"><i class="fas fa-utensils"></i></div>`
+    }
       <div class="card-title">${m.name}</div>
       <div class="card-price">Rp ${Utils.formatRupiah(m.price)}</div>
       ${!stockOk.ok ?
@@ -178,25 +182,35 @@ function renderCartFooter() {
 }
 
 function selectCategory(c) {
+  state.selectedCategory = c;
   const categoryContainer = document.getElementById('category-scroll-container');
   if (categoryContainer) {
-    state.lastCategoryScroll = categoryContainer.scrollLeft;
+    const buttons = categoryContainer.querySelectorAll('.category-btn');
+    buttons.forEach(btn => {
+      if (btn.textContent.trim() === c) {
+        btn.classList.add('active');
+      } else {
+        btn.classList.remove('active');
+      }
+    });
   }
 
-  const menuContainer = document.getElementById('menu-scroll-container');
-  if (menuContainer) {
-    state.lastMenuScroll = menuContainer.scrollTop;
-  }
+  const filteredMenus = (state.selectedCategory === "ALL" ? state.menus : state.menus.filter(m => {
+    const cat = state.categories.find(c => c.id === m.categoryId);
+    return cat && cat.name === state.selectedCategory;
+  })).sort((a, b) => a.name.localeCompare(b.name));
 
-  state.selectedCategory = c;
-  renderKasir();
-  setTimeout(() => {
-    const grid = document.getElementById('menu-grid-container');
-    if (!grid) return;
+  const grid = document.getElementById('menu-grid-container');
+  if (grid) {
+    grid.innerHTML = filteredMenus.map(m => renderMenuItem(m)).join('');
+
+    const menuScroll = document.getElementById('menu-scroll-container');
+    if (menuScroll) menuScroll.scrollTop = 0;
+
     grid.classList.remove('category-enter');
     void grid.offsetWidth;
     grid.classList.add('category-enter');
-  }, 50);
+  }
 }
 
 function cekKetersediaanBahan(menu, qty = 1) {
@@ -234,8 +248,9 @@ async function addToCart(id) {
       return;
     }
     exist.qty++;
+
   } else {
-    state.cart.push({ ...item, qty: 1 });
+    state.cart.unshift({ ...item, qty: 1 });
   }
   renderKasir();
 }
@@ -275,7 +290,11 @@ function setPaymentMethod(method) {
 }
 
 async function pilihMeja() {
-  const tables = state.tables.filter(t => t.aktif !== false);
+  const tables = state.tables.filter(t => t.aktif !== false).sort((a, b) => {
+    const nameCompare = String(a.nama).localeCompare(String(b.nama), undefined, { numeric: true, sensitivity: 'base' });
+    if (nameCompare !== 0) return nameCompare;
+    return String(a.nomor).localeCompare(String(b.nomor), undefined, { numeric: true, sensitivity: 'base' });
+  });
   const modal = document.createElement('div');
   modal.className = 'modal-overlay';
   modal.innerHTML = `
@@ -285,7 +304,7 @@ async function pilihMeja() {
         ${tables.map(meja => `
           <button class="table-btn" data-id="${meja.id}" data-nomor="${meja.nomor}" data-nama="${meja.nama}">
             <div class="table-number">${meja.nomor}</div>
-            <div class="table-name">${meja.nama}</div>
+            <div class="table-name text-bold-md mt-1 color-primary">${meja.nama}</div>
           </button>
         `).join('')}
       </div>
@@ -478,13 +497,13 @@ async function showPaymentModal() {
     const btn = document.getElementById('processPaymentBtn');
     Utils.setButtonLoading(btn, true);
     try {
-        await bayar();
-        if (document.body.contains(modal)) {
-            document.body.removeChild(modal);
-        }
+      await bayar();
+      if (document.body.contains(modal)) {
+        document.body.removeChild(modal);
+      }
     } catch (error) {
-        Utils.setButtonLoading(btn, false);
-        Utils.showToast('Gagal proses pembayaran: ' + error.message, 'error');
+      Utils.setButtonLoading(btn, false);
+      Utils.showToast('Gagal proses pembayaran: ' + error.message, 'error');
     }
   });
 

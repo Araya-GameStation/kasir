@@ -82,21 +82,9 @@ async function loadSettings() {
 async function loadTables() {
     try {
         const snapshot = await dbCloud.collection("tables").get();
-        if (snapshot.empty) {
-            const ref = await dbCloud.collection("tables").add({ nomor: "TA", nama: "Take Away", aktif: true });
-            state.tables = [{ id: ref.id, nomor: "TA", nama: "Take Away", aktif: true }];
-        } else {
-            const allDocs = [];
-            snapshot.forEach(doc => allDocs.push({ id: doc.id, ...doc.data() }));
-
-            const taDocs = allDocs.filter(t => t.nomor === "TA" || t.nama === "Take Away");
-            if (taDocs.length > 1) {
-                const toDelete = taDocs.slice(1);
-                await Promise.all(toDelete.map(t => dbCloud.collection("tables").doc(t.id).delete()));
-            }
-
-            state.tables = allDocs.filter(t => !taDocs.slice(1).find(d => d.id === t.id));
-        }
+        const allDocs = [];
+        snapshot.forEach(doc => allDocs.push({ id: doc.id, ...doc.data() }));
+        state.tables = allDocs;
     } catch (error) {
     }
 }
@@ -134,8 +122,57 @@ function getShiftWaktu() {
 }
 
 async function bukaShift() {
+    const kasirAktif = (state.settings?.kasirs || []).filter(k => k.aktif);
+    let selectedKasirsStr = state.user?.email || 'unknown';
+
+    if (kasirAktif.length > 0) {
+        window._selectedKasirs = new Set();
+        let kasirHtml = kasirAktif.map(k => `
+            <label class="auth-checkbox-group">
+                <input type="checkbox" class="auth-checkbox-input" value="${k.nama}" 
+                       onchange="if(this.checked) window._selectedKasirs.add(this.value); else window._selectedKasirs.delete(this.value);">
+                <span class="text-bold-md text-lg">${k.nama}</span>
+            </label>
+        `).join('');
+
+        const result = await Utils.showModal({
+            title: 'Buka Shift Baru',
+            content: `
+                <div class="mb-2 text-left">
+                    <label class="form-label mb-2">Pilih Kasir yang Bertugas:</label>
+                    <div class="auth-kasir-container">
+                        ${kasirHtml}
+                    </div>
+                </div>
+            `,
+            buttons: [
+                { text: 'Batal', action: 'cancel', class: 'btn-secondary' },
+                { text: 'Mulai Shift', action: 'start', class: 'swal2-confirm swal2-styled' }
+            ]
+        });
+
+        if (result === 'start') {
+            const selectedNames = Array.from(window._selectedKasirs);
+            delete window._selectedKasirs;
+            if (selectedNames.length === 0) {
+                Utils.showToast("Pilih minimal 1 kasir!", 'warning');
+                return;
+            }
+            if (selectedNames.length === 1) {
+                selectedKasirsStr = selectedNames[0];
+            } else if (selectedNames.length === 2) {
+                selectedKasirsStr = selectedNames[0] + ' & ' + selectedNames[1];
+            } else {
+                selectedKasirsStr = selectedNames.join(', ');
+            }
+        } else {
+            delete window._selectedKasirs;
+            return;
+        }
+    }
+
     const session = {
-        kasir: state.user?.email || 'unknown',
+        kasir: selectedKasirsStr,
         waktuBuka: new Date(),
         modalAwal: 0,
         totalPenjualan: 0,
@@ -147,7 +184,7 @@ async function bukaShift() {
         const doc = await dbCloud.collection("sessions").add(session);
         state.currentSession = { id: doc.id, ...session };
         localStorage.setItem("activeSession", JSON.stringify(state.currentSession));
-        Utils.showToast(`Shift ${session.shift} dibuka`);
+        Utils.showToast(`Shift ${session.shift} dibuka oleh ${selectedKasirsStr}`);
         renderKasir();
     } catch (error) {
         Utils.showToast("Gagal buka shift: " + error.message, 'error');

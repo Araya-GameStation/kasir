@@ -1,10 +1,13 @@
 let lastBahanScroll = 0;
 
 function renderBahanManager() {
-    state.currentView = "bahanManager";
-    const lowStockMaterials = state.rawMaterials.filter(b => b.stock <= (b.minStock || 5));
-    const sortedBahan = SortableTable.sort(state.rawMaterials, 'bahan');
-    const content = `
+  const _m = document.querySelector('main');
+  if (_m && state.currentView === "bahanManager") lastBahanScroll = _m.scrollTop;
+
+  state.currentView = "bahanManager";
+  const lowStockMaterials = state.rawMaterials.filter(b => b.stock <= (b.minStock || 5));
+  const sortedBahan = SortableTable.sort(state.rawMaterials, 'bahan');
+  const content = `
     <div class="stack-y">
       <div class="row-between">
         <h2 class="text-heading fw-bold"><i class="fas fa-boxes text-primary mr-2"></i> Bahan Baku</h2>
@@ -68,25 +71,30 @@ function renderBahanManager() {
       </table>
     </div>
   `;
-    app.innerHTML = Layout.renderMain(content);
-    requestAnimationFrame(() => {
-        const _main = document.querySelector('main');
-        if (_main && lastBahanScroll > 0) {
-            _main.scrollTop = lastBahanScroll;
-        }
-    });
+  app.innerHTML = Layout.renderMain(content);
+  requestAnimationFrame(() => {
+    const _main = document.querySelector('main');
+    if (_main && lastBahanScroll > 0) {
+      _main.scrollTop = lastBahanScroll;
+    }
+  });
 }
 
 function sortBahan(field) {
-    const _m = document.querySelector('main'); if (_m) lastBahanScroll = _m.scrollTop;
-    SortableTable.toggle('bahan', field);
-    renderBahanManager();
+  _saveBahanScroll();
+  SortableTable.toggle('bahan', field);
+  renderBahanManager();
+}
+
+function _saveBahanScroll() {
+  const _m = document.querySelector('main');
+  if (_m) lastBahanScroll = _m.scrollTop;
 }
 
 async function showAddBahanModal() {
-    const result = await Utils.showModal({
-        title: '➕ Tambah Bahan Baru',
-        content: `
+  const result = await Utils.showModal({
+    title: '➕ Tambah Bahan Baru',
+    content: `
       <div class="form-group">
         <label class="form-label">Nama Bahan <span class="text-danger">*</span></label>
         <input type="text" id="bahanName" class="form-input" placeholder="Contoh: Telur" autofocus>
@@ -115,56 +123,56 @@ async function showAddBahanModal() {
         <input type="text" id="bahanSupplier" class="form-input" placeholder="Nama supplier">
       </div>
     `,
-        buttons: [
-            { text: 'Batal', action: 'cancel', class: 'btn-secondary' },
-            {
-                text: 'Simpan',
-                action: 'save',
-                class: 'btn-primary',
-                onClick: () => {
-                    window._bahanName = document.getElementById('bahanName')?.value;
-                    window._bahanSatuan = document.getElementById('bahanSatuan')?.value;
-                    window._bahanStock = document.getElementById('bahanStock')?.value;
-                    window._bahanMinStock = document.getElementById('bahanMinStock')?.value;
-                    window._bahanSupplier = document.getElementById('bahanSupplier')?.value;
-                }
-            }
-        ]
+    buttons: [
+      { text: 'Batal', action: 'cancel', class: 'btn-secondary' },
+      {
+        text: 'Simpan',
+        action: 'save',
+        class: 'btn-primary',
+        onClick: () => {
+          window._bahanName = document.getElementById('bahanName')?.value;
+          window._bahanSatuan = document.getElementById('bahanSatuan')?.value;
+          window._bahanStock = document.getElementById('bahanStock')?.value;
+          window._bahanMinStock = document.getElementById('bahanMinStock')?.value;
+          window._bahanSupplier = document.getElementById('bahanSupplier')?.value;
+        }
+      }
+    ]
+  });
+  if (result !== 'save') return;
+  const name = window._bahanName?.trim();
+  if (!name) {
+    Utils.showToast("Nama harus diisi", 'error');
+    return;
+  }
+  try {
+    await dbCloud.collection("raw_materials").add({
+      name: name,
+      satuan: window._bahanSatuan || 'kg',
+      stock: parseFloat(window._bahanStock) || 0,
+      minStock: parseInt(window._bahanMinStock) || 5,
+      supplier: window._bahanSupplier || null,
+      createdAt: new Date(),
+      updatedAt: new Date()
     });
-    if (result !== 'save') return;
-    const name = window._bahanName?.trim();
-    if (!name) {
-        Utils.showToast("Nama harus diisi", 'error');
-        return;
-    }
-    try {
-        await dbCloud.collection("raw_materials").add({
-            name: name,
-            satuan: window._bahanSatuan || 'kg',
-            stock: parseFloat(window._bahanStock) || 0,
-            minStock: parseInt(window._bahanMinStock) || 5,
-            supplier: window._bahanSupplier || null,
-            createdAt: new Date(),
-            updatedAt: new Date()
-        });
-        Utils.showToast("Bahan ditambahkan");
-        delete window._bahanName;
-        delete window._bahanSatuan;
-        delete window._bahanStock;
-        delete window._bahanMinStock;
-        delete window._bahanSupplier;
-    } catch (error) {
-        Utils.showToast("Gagal: " + error.message, 'error');
-    }
+    Utils.showToast("Bahan ditambahkan");
+    delete window._bahanName;
+    delete window._bahanSatuan;
+    delete window._bahanStock;
+    delete window._bahanMinStock;
+    delete window._bahanSupplier;
+  } catch (error) {
+    Utils.showToast("Gagal: " + error.message, 'error');
+  }
 }
 
 async function tambahStokBahan(id) {
-    const bahan = state.rawMaterials.find(b => b.id === id);
-    if (!bahan) return;
-    const modal = document.createElement('div');
-    modal.className = 'modal-overlay';
-    modal.id = 'tambah-stok-modal';
-    modal.innerHTML = `
+  const bahan = state.rawMaterials.find(b => b.id === id);
+  if (!bahan) return;
+  const modal = document.createElement('div');
+  modal.className = 'modal-overlay';
+  modal.id = 'tambah-stok-modal';
+  modal.innerHTML = `
     <div class="modal modal-sm">
       <h3><i class="fas fa-plus-circle"></i> Tambah Stok ${bahan.name}</h3>
       <div class="bahan-info-box">
@@ -189,74 +197,74 @@ async function tambahStokBahan(id) {
       </div>
     </div>
   `;
-    document.body.appendChild(modal);
-    setTimeout(() => {
-        const input = document.getElementById('tambahQty');
-        if (input) input.focus();
-    }, 200);
-    window.closeTambahStokModal = function () {
-        const modal = document.getElementById('tambah-stok-modal');
-        if (modal) {
-            modal.classList.add('fade-out');
-            setTimeout(() => {
-                if (modal.parentNode) modal.remove();
-            }, 200);
-        }
-    };
-    window.prosesTambahStok = async function (bahanId) {
-        try {
-            const qtyInput = document.getElementById('tambahQty');
-            const notesInput = document.getElementById('tambahNotes');
-            if (!qtyInput) {
-                Utils.showToast("Terjadi kesalahan", 'error');
-                return;
-            }
-            const qty = parseFloat(qtyInput.value);
-            if (isNaN(qty) || qty <= 0) {
-                Utils.showToast("Jumlah harus diisi dengan angka positif", 'error');
-                qtyInput.focus();
-                return;
-            }
-            const notes = notesInput?.value?.trim() || 'Tambah manual';
-            Utils.showToast("⏳ Menyimpan...", 'warning');
-            const bahanRef = dbCloud.collection("raw_materials").doc(bahanId);
-            await bahanRef.update({
-                stock: firebase.firestore.FieldValue.increment(qty)
-            });
-            await dbCloud.collection("stock_mutations").add({
-                type: "in",
-                source: "manual",
-                bahanId: bahanId,
-                namaBahan: bahan.name,
-                qty: qty,
-                satuan: bahan.satuan,
-                notes: notes,
-                userId: state.user?.email || 'unknown',
-                createdAt: new Date()
-            });
-            Utils.showToast(`Stok ${bahan.name} +${qty} ${bahan.satuan}`);
-            if (typeof window.updateAllProductStocks === 'function') {
-                await window.updateAllProductStocks();
-            }
-            closeTambahStokModal();
-            renderBahanManager();
-        } catch (error) {
-            if (error.code === 'permission-denied') {
-                Utils.showToast("Tidak punya izin. Periksa Firestore Rules", 'error');
-            } else {
-                Utils.showToast("Gagal: " + error.message, 'error');
-            }
-        }
-    };
+  document.body.appendChild(modal);
+  setTimeout(() => {
+    const input = document.getElementById('tambahQty');
+    if (input) input.focus();
+  }, 200);
+  window.closeTambahStokModal = function () {
+    const modal = document.getElementById('tambah-stok-modal');
+    if (modal) {
+      modal.classList.add('fade-out');
+      setTimeout(() => {
+        if (modal.parentNode) modal.remove();
+      }, 200);
+    }
+  };
+  window.prosesTambahStok = async function (bahanId) {
+    try {
+      const qtyInput = document.getElementById('tambahQty');
+      const notesInput = document.getElementById('tambahNotes');
+      if (!qtyInput) {
+        Utils.showToast("Terjadi kesalahan", 'error');
+        return;
+      }
+      const qty = parseFloat(qtyInput.value);
+      if (isNaN(qty) || qty <= 0) {
+        Utils.showToast("Jumlah harus diisi dengan angka positif", 'error');
+        qtyInput.focus();
+        return;
+      }
+      const notes = notesInput?.value?.trim() || 'Tambah manual';
+      Utils.showToast("⏳ Menyimpan...", 'warning');
+      const bahanRef = dbCloud.collection("raw_materials").doc(bahanId);
+      await bahanRef.update({
+        stock: firebase.firestore.FieldValue.increment(qty)
+      });
+      await dbCloud.collection("stock_mutations").add({
+        type: "in",
+        source: "manual",
+        bahanId: bahanId,
+        namaBahan: bahan.name,
+        qty: qty,
+        satuan: bahan.satuan,
+        notes: notes,
+        userId: state.user?.email || 'unknown',
+        createdAt: new Date()
+      });
+      Utils.showToast(`Stok ${bahan.name} +${qty} ${bahan.satuan}`);
+      if (typeof window.updateAllProductStocks === 'function') {
+        await window.updateAllProductStocks();
+      }
+      closeTambahStokModal();
+      renderBahanManager();
+    } catch (error) {
+      if (error.code === 'permission-denied') {
+        Utils.showToast("Tidak punya izin. Periksa Firestore Rules", 'error');
+      } else {
+        Utils.showToast("Gagal: " + error.message, 'error');
+      }
+    }
+  };
 }
 
 async function kurangiStokBahanManual(id) {
-    const bahan = state.rawMaterials.find(b => b.id === id);
-    if (!bahan) return;
-    const modal = document.createElement('div');
-    modal.className = 'modal-overlay';
-    modal.id = 'kurang-stok-modal';
-    modal.innerHTML = `
+  const bahan = state.rawMaterials.find(b => b.id === id);
+  if (!bahan) return;
+  const modal = document.createElement('div');
+  modal.className = 'modal-overlay';
+  modal.id = 'kurang-stok-modal';
+  modal.innerHTML = `
     <div class="modal modal-sm">
       <h3><i class="fas fa-minus-circle"></i> Kurangi Stok ${bahan.name}</h3>
       <div class="bahan-info-box">
@@ -281,73 +289,73 @@ async function kurangiStokBahanManual(id) {
       </div>
     </div>
   `;
-    document.body.appendChild(modal);
-    setTimeout(() => {
-        const input = document.getElementById('kurangQty');
-        if (input) input.focus();
-    }, 200);
-    window.closeKurangStokModal = function () {
-        const modal = document.getElementById('kurang-stok-modal');
-        if (modal) {
-            modal.classList.add('fade-out');
-            setTimeout(() => {
-                if (modal.parentNode) modal.remove();
-            }, 200);
-        }
-    };
-    window.prosesKurangStok = async function (bahanId) {
-        try {
-            const qtyInput = document.getElementById('kurangQty');
-            const notesInput = document.getElementById('kurangNotes');
-            if (!qtyInput) {
-                Utils.showToast("Terjadi kesalahan", 'error');
-                return;
-            }
-            const qty = parseFloat(qtyInput.value);
-            if (isNaN(qty) || qty <= 0) {
-                Utils.showToast("Jumlah harus diisi dengan angka positif", 'error');
-                qtyInput.focus();
-                return;
-            }
-            if (qty > bahan.stock) {
-                Utils.showToast(`Stok tidak cukup! (tersisa ${bahan.stock} ${bahan.satuan})`, 'error');
-                return;
-            }
-            const notes = notesInput?.value?.trim() || 'Pengurangan manual';
-            Utils.showToast("⏳ Menyimpan...", 'warning');
-            await dbCloud.collection("raw_materials").doc(bahanId).update({
-                stock: firebase.firestore.FieldValue.increment(-qty)
-            });
-            await dbCloud.collection("stock_mutations").add({
-                type: "out",
-                source: "manual",
-                bahanId: bahanId,
-                namaBahan: bahan.name,
-                qty: qty,
-                satuan: bahan.satuan,
-                notes: notes,
-                userId: state.user?.email || 'unknown',
-                createdAt: new Date()
-            });
-            Utils.showToast(`Stok ${bahan.name} -${qty} ${bahan.satuan}`);
-            if (typeof window.updateAllProductStocks === 'function') {
-                await window.updateAllProductStocks();
-            }
-            closeKurangStokModal();
-            renderBahanManager();
-        } catch (error) {
-            Utils.showToast("Gagal: " + error.message, 'error');
-        }
-    };
+  document.body.appendChild(modal);
+  setTimeout(() => {
+    const input = document.getElementById('kurangQty');
+    if (input) input.focus();
+  }, 200);
+  window.closeKurangStokModal = function () {
+    const modal = document.getElementById('kurang-stok-modal');
+    if (modal) {
+      modal.classList.add('fade-out');
+      setTimeout(() => {
+        if (modal.parentNode) modal.remove();
+      }, 200);
+    }
+  };
+  window.prosesKurangStok = async function (bahanId) {
+    try {
+      const qtyInput = document.getElementById('kurangQty');
+      const notesInput = document.getElementById('kurangNotes');
+      if (!qtyInput) {
+        Utils.showToast("Terjadi kesalahan", 'error');
+        return;
+      }
+      const qty = parseFloat(qtyInput.value);
+      if (isNaN(qty) || qty <= 0) {
+        Utils.showToast("Jumlah harus diisi dengan angka positif", 'error');
+        qtyInput.focus();
+        return;
+      }
+      if (qty > bahan.stock) {
+        Utils.showToast(`Stok tidak cukup! (tersisa ${bahan.stock} ${bahan.satuan})`, 'error');
+        return;
+      }
+      const notes = notesInput?.value?.trim() || 'Pengurangan manual';
+      Utils.showToast("⏳ Menyimpan...", 'warning');
+      await dbCloud.collection("raw_materials").doc(bahanId).update({
+        stock: firebase.firestore.FieldValue.increment(-qty)
+      });
+      await dbCloud.collection("stock_mutations").add({
+        type: "out",
+        source: "manual",
+        bahanId: bahanId,
+        namaBahan: bahan.name,
+        qty: qty,
+        satuan: bahan.satuan,
+        notes: notes,
+        userId: state.user?.email || 'unknown',
+        createdAt: new Date()
+      });
+      Utils.showToast(`Stok ${bahan.name} -${qty} ${bahan.satuan}`);
+      if (typeof window.updateAllProductStocks === 'function') {
+        await window.updateAllProductStocks();
+      }
+      closeKurangStokModal();
+      renderBahanManager();
+    } catch (error) {
+      Utils.showToast("Gagal: " + error.message, 'error');
+    }
+  };
 }
 
 async function editBahan(id) {
-    const bahan = state.rawMaterials.find(b => b.id === id);
-    if (!bahan) return;
-    const modal = document.createElement('div');
-    modal.className = 'modal-overlay';
-    modal.id = 'edit-bahan-modal';
-    modal.innerHTML = `
+  const bahan = state.rawMaterials.find(b => b.id === id);
+  if (!bahan) return;
+  const modal = document.createElement('div');
+  modal.className = 'modal-overlay';
+  modal.id = 'edit-bahan-modal';
+  modal.innerHTML = `
     <div class="modal modal-lg">
       <h3><i class="fas fa-edit"></i> Edit ${bahan.name}</h3>
       <div class="form-group">
@@ -381,60 +389,60 @@ async function editBahan(id) {
       </div>
     </div>
   `;
-    document.body.appendChild(modal);
-    window.closeEditBahanModal = function () {
-        const modal = document.getElementById('edit-bahan-modal');
-        if (modal) {
-            modal.classList.add('fade-out');
-            setTimeout(() => {
-                if (modal.parentNode) modal.remove();
-            }, 200);
-        }
-    };
-    window.prosesEditBahan = async function (bahanId) {
-        try {
-            const name = document.getElementById('editBahanName')?.value;
-            if (!name) {
-                Utils.showToast("Nama harus diisi", 'error');
-                return;
-            }
-            Utils.showToast("⏳ Menyimpan...", 'warning');
-            await dbCloud.collection("raw_materials").doc(bahanId).update({
-                name: name,
-                satuan: document.getElementById('editBahanSatuan').value,
-                minStock: parseInt(document.getElementById('editBahanMinStock').value) || 5,
-                supplier: document.getElementById('editBahanSupplier').value || null,
-                updatedAt: new Date()
-            });
-            Utils.showToast("Bahan diupdate");
-            if (typeof window.updateAllProductStocks === 'function') {
-                await window.updateAllProductStocks();
-            }
-            closeEditBahanModal();
-            renderBahanManager();
-        } catch (error) {
-            Utils.showToast("Gagal: " + error.message, 'error');
-        }
-    };
+  document.body.appendChild(modal);
+  window.closeEditBahanModal = function () {
+    const modal = document.getElementById('edit-bahan-modal');
+    if (modal) {
+      modal.classList.add('fade-out');
+      setTimeout(() => {
+        if (modal.parentNode) modal.remove();
+      }, 200);
+    }
+  };
+  window.prosesEditBahan = async function (bahanId) {
+    try {
+      const name = document.getElementById('editBahanName')?.value;
+      if (!name) {
+        Utils.showToast("Nama harus diisi", 'error');
+        return;
+      }
+      Utils.showToast("⏳ Menyimpan...", 'warning');
+      await dbCloud.collection("raw_materials").doc(bahanId).update({
+        name: name,
+        satuan: document.getElementById('editBahanSatuan').value,
+        minStock: parseInt(document.getElementById('editBahanMinStock').value) || 5,
+        supplier: document.getElementById('editBahanSupplier').value || null,
+        updatedAt: new Date()
+      });
+      Utils.showToast("Bahan diupdate");
+      if (typeof window.updateAllProductStocks === 'function') {
+        await window.updateAllProductStocks();
+      }
+      closeEditBahanModal();
+      renderBahanManager();
+    } catch (error) {
+      Utils.showToast("Gagal: " + error.message, 'error');
+    }
+  };
 }
 
 async function hapusBahan(id) {
-    if (!await Utils.showConfirm("Yakin hapus bahan ini?")) return;
-    const digunakan = state.menus.some(m => m.resep?.some(r => r.bahanId === id));
-    if (digunakan) {
-        Utils.showToast("Bahan masih digunakan di resep!", 'error');
-        return;
+  if (!await Utils.showConfirm("Yakin hapus bahan ini?")) return;
+  const digunakan = state.menus.some(m => m.resep?.some(r => r.bahanId === id));
+  if (digunakan) {
+    Utils.showToast("Bahan masih digunakan di resep!", 'error');
+    return;
+  }
+  try {
+    await dbCloud.collection("raw_materials").doc(id).delete();
+    Utils.showToast("Bahan dihapus");
+    if (typeof window.updateAllProductStocks === 'function') {
+      await window.updateAllProductStocks();
     }
-    try {
-        await dbCloud.collection("raw_materials").doc(id).delete();
-        Utils.showToast("Bahan dihapus");
-        if (typeof window.updateAllProductStocks === 'function') {
-            await window.updateAllProductStocks();
-        }
-        renderBahanManager();
-    } catch (error) {
-        Utils.showToast("Gagal: " + error.message, 'error');
-    }
+    renderBahanManager();
+  } catch (error) {
+    Utils.showToast("Gagal: " + error.message, 'error');
+  }
 }
 
 window.renderBahanManager = renderBahanManager;

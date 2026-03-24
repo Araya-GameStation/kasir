@@ -3,6 +3,7 @@ window.SortableTable = {
         transactions: { field: 'date', direction: 'desc' },
         menus: { field: 'name', direction: 'asc' },
         bahan: { field: 'name', direction: 'asc' },
+        kasir: { field: 'nama', direction: 'asc' },
         meja: { field: 'nomor', direction: 'asc' }
     },
     sort(array, configKey, customSortFn) {

@@ -1,29 +1,29 @@
 let lastHistoryScrollPosition = 0;
 
 function renderHistory() {
-    if (!state.currentSession) {
-        renderNoSession();
-        return;
-    }
+  if (!state.currentSession) {
+    renderNoSession();
+    return;
+  }
 
-    const mainContent = document.querySelector('main');
-    if (mainContent) {
-        lastHistoryScrollPosition = mainContent.scrollTop;
-    }
+  const mainContent = document.querySelector('main');
+  if (mainContent) {
+    lastHistoryScrollPosition = mainContent.scrollTop;
+  }
 
-    state.currentView = "history";
-    const totalIncome = state.transactions.reduce((sum, t) => sum + t.total, 0);
-    const totalTransaksi = state.transactions.length;
-    const totalCASH = state.transactions.reduce((sum, t) => sum + (t.cashAmount || (t.metodeBayar === 'tunai' ? t.total : 0)), 0);
-    const totalQRIS = state.transactions.reduce((sum, t) => sum + (t.qrisAmount || (t.metodeBayar === 'qris' ? t.total : 0)), 0);
-    const recap = {};
-    state.transactions.forEach(t => t.items.forEach(i => {
-        if (!recap[i.name]) recap[i.name] = { qty: 0, total: 0 };
-        recap[i.name].qty += i.qty;
-        recap[i.name].total += i.price * i.qty;
-    }));
-    const sortedTransactions = SortableTable.sort(state.transactions, 'transactions');
-    const content = `
+  state.currentView = "history";
+  const totalIncome = state.transactions.reduce((sum, t) => sum + t.total, 0);
+  const totalTransaksi = state.transactions.length;
+  const totalCASH = state.transactions.reduce((sum, t) => sum + (t.cashAmount || (t.metodeBayar === 'tunai' ? t.total : 0)), 0);
+  const totalQRIS = state.transactions.reduce((sum, t) => sum + (t.qrisAmount || (t.metodeBayar === 'qris' ? t.total : 0)), 0);
+  const recap = {};
+  state.transactions.forEach(t => t.items.forEach(i => {
+    if (!recap[i.name]) recap[i.name] = { qty: 0, total: 0 };
+    recap[i.name].qty += i.qty;
+    recap[i.name].total += i.price * i.qty;
+  }));
+  const sortedTransactions = SortableTable.sort(state.transactions, 'transactions');
+  const content = `
     <div class="stack-y">
       <div class="session-header">
         <div class="session-header-row">
@@ -54,8 +54,8 @@ function renderHistory() {
         <div class="recap-scroll-container">
           <div class="recap-grid scrollable">
             ${Object.keys(recap).length === 0 ?
-            '<p class="text-muted">Belum ada data</p>' :
-            Object.keys(recap).sort().map(name => `
+      '<p class="text-muted">Belum ada data</p>' :
+      Object.keys(recap).sort().map(name => `
                 <div class="recap-item">
                   <div class="recap-name">${name}</div>
                   <div class="recap-detail">
@@ -81,8 +81,8 @@ function renderHistory() {
       </div>
       <h3><i class="fas fa-history"></i> Riwayat Transaksi</h3>
       ${state.transactions.length === 0 ?
-            '<p class="text-center text-muted">Belum ada transaksi</p>' :
-            `<table class="table-full">
+      '<p class="text-center text-muted">Belum ada transaksi</p>' :
+      `<table class="table-full">
         <thead class="neu-table-head">
           <tr>
             <th class="td-base text-left cursor-pointer" onclick="sortTransactions('date')">
@@ -99,8 +99,8 @@ function renderHistory() {
         </thead>
         <tbody>
           ${sortedTransactions.map(t => {
-                const tgl = new Date(t.date.seconds ? t.date.seconds * 1000 : t.date);
-                return `
+        const tgl = new Date(t.date.seconds ? t.date.seconds * 1000 : t.date);
+        return `
               <tr class="neu-table-row">
                 <td class="td-base">
                   <input type="checkbox" ${state.selectedHistory.has(t.id) ? 'checked' : ''} 
@@ -109,42 +109,43 @@ function renderHistory() {
                 </td>
                 <td class="td-base">${t.mejaNama || 'Take Away'}</td>
                 <td class="td-base fw-bold text-primary">Rp ${Utils.formatRupiah(t.total)}</td>
-                <td class="td-base">
-                  <button class="btn btn-icon-sm" onclick="showDetailModal('${t.id}'); event.stopPropagation()">
+                <td class="td-base table-nowrap">
+                  <button class="btn btn-icon-sm" onclick="showDetailModal('${t.id}'); event.stopPropagation()" title="Detail">
                     <i class="fas fa-eye"></i>
                   </button>
-                  <button class="btn btn-icon-sm" onclick="const b=this;Utils.setButtonLoading(b,true);reprintReceipt('${t.id}').finally(()=>Utils.setButtonLoading(b,false));event.stopPropagation()">
+                  <button class="btn btn-icon-sm text-warning" onclick="showEditPaymentModal('${t.id}'); event.stopPropagation()" title="Edit Pembayaran">
+                    <i class="fas fa-edit"></i>
+                  </button>
+                  <button class="btn btn-icon-sm" onclick="const b=this;Utils.setButtonLoading(b,true);reprintReceipt('${t.id}').finally(()=>Utils.setButtonLoading(b,false));event.stopPropagation()" title="Cetak">
                     <i class="fas fa-print"></i>
                   </button>
                 </td>
               </tr>
             `;
-            }).join('')}
+      }).join('')}
         </tbody>
       </table>`}
     </div>
   `;
-    app.innerHTML = Layout.renderMain(content);
+  app.innerHTML = Layout.renderMain(content);
 
-    requestAnimationFrame(() => {
-        const newMainContent = document.querySelector('main');
-        if (newMainContent && lastHistoryScrollPosition > 0) {
-            newMainContent.scrollTop = lastHistoryScrollPosition;
-        }
-    });
+  const newMainContent = document.querySelector('main');
+  if (newMainContent && lastHistoryScrollPosition > 0) {
+    newMainContent.scrollTop = lastHistoryScrollPosition;
+  }
 }
 
 function showDetailModal(trxId) {
-    const mainContent = document.querySelector('main');
-    if (mainContent) {
-        lastHistoryScrollPosition = mainContent.scrollTop;
-    }
+  const mainContent = document.querySelector('main');
+  if (mainContent) {
+    lastHistoryScrollPosition = mainContent.scrollTop;
+  }
 
-    const trx = state.transactions.find(t => t.id === trxId);
-    if (!trx) return;
-    const tgl = new Date(trx.date.seconds ? trx.date.seconds * 1000 : trx.date);
+  const trx = state.transactions.find(t => t.id === trxId);
+  if (!trx) return;
+  const tgl = new Date(trx.date.seconds ? trx.date.seconds * 1000 : trx.date);
 
-    const itemsHTML = trx.items.map((item, index) => `
+  const itemsHTML = trx.items.map((item, index) => `
     <tr>
       <td>${index + 1}</td>
       <td>${item.name}</td>
@@ -154,9 +155,9 @@ function showDetailModal(trxId) {
     </tr>
   `).join('');
 
-    const modal = document.createElement('div');
-    modal.className = 'modal-overlay';
-    modal.innerHTML = `
+  const modal = document.createElement('div');
+  modal.className = 'modal-overlay';
+  modal.innerHTML = `
     <div class="modal modal-lg modal-detail-trx">
       <h3><i class="fas fa-receipt"></i> Detail Transaksi</h3>
 
@@ -234,84 +235,283 @@ function showDetailModal(trxId) {
       </div>
     </div>
   `;
-    document.body.appendChild(modal);
+  document.body.appendChild(modal);
 }
 
 function sortTransactions(field) {
-    const mainContent = document.querySelector('main');
-    if (mainContent) {
-        lastHistoryScrollPosition = mainContent.scrollTop;
-    }
-    SortableTable.toggle('transactions', field);
-    renderHistory();
+  const mainContent = document.querySelector('main');
+  if (mainContent) {
+    lastHistoryScrollPosition = mainContent.scrollTop;
+  }
+  SortableTable.toggle('transactions', field);
+  renderHistory();
 }
 
 function toggleSelect(id) {
-    const mainContent = document.querySelector('main');
-    if (mainContent) {
-        lastHistoryScrollPosition = mainContent.scrollTop;
-    }
-    if (state.selectedHistory.has(id)) state.selectedHistory.delete(id);
-    else state.selectedHistory.add(id);
-    renderHistory();
+  const mainContent = document.querySelector('main');
+  if (mainContent) {
+    lastHistoryScrollPosition = mainContent.scrollTop;
+  }
+  if (state.selectedHistory.has(id)) state.selectedHistory.delete(id);
+  else state.selectedHistory.add(id);
+  renderHistory();
 }
 
 function toggleSelectAll() {
-    const mainContent = document.querySelector('main');
-    if (mainContent) {
-        lastHistoryScrollPosition = mainContent.scrollTop;
-    }
-    if (state.selectedHistory.size === state.transactions.length) state.selectedHistory.clear();
-    else state.transactions.forEach(t => state.selectedHistory.add(t.id));
-    renderHistory();
+  const mainContent = document.querySelector('main');
+  if (mainContent) {
+    lastHistoryScrollPosition = mainContent.scrollTop;
+  }
+  if (state.selectedHistory.size === state.transactions.length) state.selectedHistory.clear();
+  else state.transactions.forEach(t => state.selectedHistory.add(t.id));
+  renderHistory();
 }
 
 async function deleteSelected() {
-    if (state.selectedHistory.size === 0) return;
-    if (!await Utils.showConfirm(`Hapus ${state.selectedHistory.size} transaksi?`)) return;
+  if (state.selectedHistory.size === 0) return;
+  if (!await Utils.showConfirm(`Hapus ${state.selectedHistory.size} transaksi? Data stok bahan dan produk akan dikembalikan.`)) return;
 
-    const mainContent = document.querySelector('main');
-    if (mainContent) {
-        lastHistoryScrollPosition = mainContent.scrollTop;
+  const mainContent = document.querySelector('main');
+  if (mainContent) {
+    lastHistoryScrollPosition = mainContent.scrollTop;
+  }
+
+  try {
+    const batch = dbCloud.batch();
+    const transactionsToDelete = [...state.selectedHistory].map(id => state.transactions.find(t => t.id === id)).filter(Boolean);
+
+    for (const trx of transactionsToDelete) {
+      if (!trx.items) continue;
+
+      for (const item of trx.items) {
+        if (item.useStock) {
+          batch.update(dbCloud.collection("menus").doc(item.id), {
+            stock: firebase.firestore.FieldValue.increment(item.qty)
+          });
+        }
+
+        if (item.resep) {
+          for (const bahan of item.resep) {
+            batch.update(dbCloud.collection("raw_materials").doc(bahan.bahanId), {
+              stock: firebase.firestore.FieldValue.increment(bahan.qty * item.qty)
+            });
+
+            batch.set(dbCloud.collection("stock_mutations").doc(), {
+              type: "in",
+              source: "history_deleted",
+              bahanId: bahan.bahanId,
+              namaBahan: bahan.nama,
+              qty: bahan.qty * item.qty,
+              satuan: bahan.satuan || 'pcs',
+              produkId: item.id,
+              namaProduk: item.name,
+              transactionId: trx.id,
+              userId: state.user?.email || 'unknown',
+              createdAt: new Date()
+            });
+          }
+        }
+      }
+      batch.delete(dbCloud.collection("transactions").doc(trx.id));
     }
 
-    try {
-        const jumlah = state.selectedHistory.size;
-        await Promise.all([...state.selectedHistory].map(id => dbCloud.collection("transactions").doc(id).delete()));
-        state.selectedHistory.clear();
-        Utils.showToast(`${jumlah} transaksi dihapus`);
-        renderHistory();
-    } catch (error) {
-        Utils.showToast("Gagal: " + error.message, 'error');
-    }
+    await batch.commit();
+    state.selectedHistory.clear();
+    Utils.showToast(`${transactionsToDelete.length} transaksi dihapus & stok dikembalikan`, "success");
+    renderHistory();
+  } catch (error) {
+    Utils.showToast("Gagal: " + error.message, 'error');
+  }
 }
 
 async function reprintReceipt(trxId) {
-    const mainContent = document.querySelector('main');
-    if (mainContent) {
-        lastHistoryScrollPosition = mainContent.scrollTop;
-    }
-    try {
-        const trx = state.transactions.find(t => t.id === trxId);
-        if (!trx) return;
-        if (typeof window.printStruk === 'function') await window.printStruk(trx);
-    } catch (error) {
-        Utils.showToast('Gagal cetak ulang: ' + error.message, 'error');
-    }
+  const mainContent = document.querySelector('main');
+  if (mainContent) {
+    lastHistoryScrollPosition = mainContent.scrollTop;
+  }
+  try {
+    const trx = state.transactions.find(t => t.id === trxId);
+    if (!trx) return;
+    if (typeof window.printStruk === 'function') await window.printStruk(trx);
+  } catch (error) {
+    Utils.showToast('Gagal cetak ulang: ' + error.message, 'error');
+  }
 }
 
 async function cetakRekapSesi() {
-    const mainContent = document.querySelector('main');
-    if (mainContent) {
-        lastHistoryScrollPosition = mainContent.scrollTop;
+  const mainContent = document.querySelector('main');
+  if (mainContent) {
+    lastHistoryScrollPosition = mainContent.scrollTop;
+  }
+  try {
+    if (typeof window.printRekapSesi === 'function') {
+      await window.printRekapSesi(state.currentSession, state.transactions);
     }
-    try {
-        if (typeof window.printRekapSesi === 'function') {
-            await window.printRekapSesi(state.currentSession, state.transactions);
-        }
-    } catch (error) {
-        Utils.showToast('Gagal cetak rekap: ' + error.message, 'error');
+  } catch (error) {
+    Utils.showToast('Gagal cetak rekap: ' + error.message, 'error');
+  }
+}
+
+function showEditPaymentModal(trxId) {
+  const trx = state.transactions.find(t => t.id === trxId);
+  if (!trx) return;
+
+  const modal = document.createElement('div');
+  modal.className = 'modal-overlay';
+
+  let methodHtml = `
+      <div class="payment-grid">
+        <button class="payment-option ${trx.metodeBayar === 'tunai' ? 'active' : ''}" onclick="selectEditMethod(this, 'tunai')">
+          <i class="fas fa-money-bill-wave"></i> <span>CASH</span>
+        </button>
+        <button class="payment-option ${trx.metodeBayar === 'qris' ? 'active' : ''}" onclick="selectEditMethod(this, 'qris')">
+          <i class="fas fa-qrcode"></i> <span>QRIS</span>
+        </button>
+        <button class="payment-option ${trx.metodeBayar === 'mixed' ? 'active' : ''}" onclick="selectEditMethod(this, 'mixed')">
+          <i class="fas fa-random"></i> <span>CAMPUR</span>
+        </button>
+      </div>
+      
+      <div id="edit-quick-cash" class="quick-buttons mt-4 mb-3 ${trx.metodeBayar === 'tunai' ? 'flex' : 'hidden'}">
+         <button class="btn btn-secondary btn-sm" onclick="setEditCash(50000)">50K</button>
+         <button class="btn btn-secondary btn-sm" onclick="setEditCash(100000)">100K</button>
+         <button class="btn btn-secondary btn-sm" onclick="setEditCash(${trx.total})">LUNAS</button>
+      </div>
+
+      <div id="edit-pure-qris-msg" class="p-4 text-center ${trx.metodeBayar === 'qris' ? 'block' : 'hidden'}">
+        <i class="fas fa-qrcode color-primary mb-3 mt-2 text-xl"></i>
+        <p class="text-muted">Nominal QRIS otomatis pas dengan total tagihan <strong class="text-primary">Rp ${Utils.formatRupiah(trx.total)}</strong></p>
+      </div>
+
+      <div id="edit-cash-input" class="form-group ${trx.metodeBayar === 'qris' ? 'is-hidden' : ''}">
+        <label class="form-label">Nominal Tunai (CASH)</label>
+        <input type="number" id="edit-cash-amount" class="form-input" placeholder="0" 
+               oninput="handleEditMixedCalc(this.value, 'cash', ${trx.total})"
+               value="${trx.metodeBayar === 'tunai' ? trx.paid : (trx.cashAmount || 0)}">
+      </div>
+      <div id="edit-qris-input" class="form-group ${trx.metodeBayar === 'mixed' ? '' : 'is-hidden'}">
+        <label class="form-label">Nominal QRIS</label>
+        <input type="number" id="edit-qris-amount" class="form-input" placeholder="0" 
+               oninput="handleEditMixedCalc(this.value, 'qris', ${trx.total})"
+               value="${trx.metodeBayar === 'mixed' ? (trx.qrisAmount || 0) : ''}">
+      </div>
+    `;
+
+  modal.innerHTML = `
+      <div class="modal">
+        <h3><i class="fas fa-edit"></i> Edit Pembayaran</h3>
+        <p class="text-muted mb-2">Total Transaksi: <strong class="text-primary text-bold-md">Rp ${Utils.formatRupiah(trx.total)}</strong></p>
+        
+        <div id="edit-payment-container" data-method="${trx.metodeBayar}">
+          ${methodHtml}
+        </div>
+
+        <div class="modal-actions">
+          <button class="btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">Batal</button>
+          <button class="btn btn-primary" onclick="const b=this;Utils.setButtonLoading(b,true);saveEditPayment('${trx.id}', b).finally(()=>Utils.setButtonLoading(b,false))">
+            <i class="fas fa-save"></i> Simpan
+          </button>
+        </div>
+      </div>
+    `;
+  document.body.appendChild(modal);
+}
+
+window.selectEditMethod = function (btn, method) {
+  const container = document.getElementById('edit-payment-container');
+  container.dataset.method = method;
+
+  container.querySelectorAll('.payment-option').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+
+  const cashInput = document.getElementById('edit-cash-input');
+  const qrisInput = document.getElementById('edit-qris-input');
+  const quickCash = document.getElementById('edit-quick-cash');
+  const pureQrisMsg = document.getElementById('edit-pure-qris-msg');
+
+  if (method === 'tunai') {
+    cashInput.classList.remove('is-hidden');
+    qrisInput.classList.add('is-hidden');
+    if (quickCash) { quickCash.classList.remove('hidden'); quickCash.classList.add('flex'); }
+    if (pureQrisMsg) pureQrisMsg.classList.add('hidden');
+  } else if (method === 'qris') {
+    cashInput.classList.add('is-hidden');
+    qrisInput.classList.add('is-hidden');
+    if (quickCash) quickCash.classList.add('hidden');
+    if (pureQrisMsg) pureQrisMsg.classList.remove('hidden');
+  } else {
+    cashInput.classList.remove('is-hidden');
+    qrisInput.classList.remove('is-hidden');
+    if (quickCash) quickCash.classList.add('hidden');
+    if (pureQrisMsg) pureQrisMsg.classList.add('hidden');
+  }
+};
+
+window.setEditCash = function (amount) {
+  document.getElementById('edit-cash-amount').value = amount;
+};
+
+window.handleEditMixedCalc = function (value, source, total) {
+  const container = document.getElementById('edit-payment-container');
+  if (container.dataset.method !== 'mixed') return;
+
+  const cashInput = document.getElementById('edit-cash-amount');
+  const qrisInput = document.getElementById('edit-qris-amount');
+
+  let val = parseInt(value) || 0;
+  if (val > total) val = total;
+
+  if (source === 'cash') {
+    qrisInput.value = total - val;
+  } else {
+    cashInput.value = total - val;
+  }
+};
+
+async function saveEditPayment(trxId, btnRef) {
+  const trx = state.transactions.find(t => t.id === trxId);
+  if (!trx) return;
+
+  const container = document.getElementById('edit-payment-container');
+  const method = container.dataset.method;
+  const total = trx.total;
+
+  let cashAmount = 0, qrisAmount = 0, paid = 0;
+
+  if (method === 'tunai') {
+    cashAmount = parseInt(document.getElementById('edit-cash-amount').value || 0);
+    paid = cashAmount;
+    if (cashAmount < total) { Utils.showToast("Uang cash kurang dari total!", 'error'); return; }
+    if (cashAmount > total) { Utils.showToast("Uang cash tidak boleh lebih/kurang", 'error'); return; }
+  } else if (method === 'qris') {
+    qrisAmount = total;
+    paid = total;
+  } else {
+    cashAmount = parseInt(document.getElementById('edit-cash-amount').value || 0);
+    qrisAmount = parseInt(document.getElementById('edit-qris-amount').value || 0);
+    paid = cashAmount + qrisAmount;
+
+    if (cashAmount >= total || qrisAmount >= total) {
+      Utils.showToast("Salah satu melebihi/setara total! Gunakan metode CASH/QRIS tunggal.", 'warning');
+      return;
     }
+    if (paid < total) { Utils.showToast("Pembayaran campuran kurang!", 'error'); return; }
+    if (paid > total && paid - total > cashAmount) { Utils.showToast("QRIS tidak sah!", 'error'); return; }
+  }
+
+  try {
+    await dbCloud.collection("transactions").doc(trxId).update({
+      metodeBayar: method,
+      cashAmount: cashAmount,
+      qrisAmount: qrisAmount,
+      paid: paid,
+      change: paid - total
+    });
+    Utils.showToast("Pembayaran berhasil diupdate", "success");
+    btnRef.closest('.modal-overlay').remove();
+  } catch (e) {
+    Utils.showToast("Gagal update pembayaran: " + e.message, 'error');
+  }
 }
 
 window.renderHistory = renderHistory;
@@ -322,3 +522,5 @@ window.toggleSelectAll = toggleSelectAll;
 window.deleteSelected = deleteSelected;
 window.reprintReceipt = reprintReceipt;
 window.cetakRekapSesi = cetakRekapSesi;
+window.showEditPaymentModal = showEditPaymentModal;
+window.saveEditPayment = saveEditPayment;
