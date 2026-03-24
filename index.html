@@ -4,12 +4,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="theme-color" content="">
+  <meta name="theme-color" content="#0a7a5f">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="GarisWaktu">
-  <meta name="description" content="Sistem Kasir Garis Waktu - POS Modern dengan Manajemen Stok, Resep, Pengeluaran, dan Laporan">
+  <meta name="description"
+    content="Sistem Kasir Garis Waktu - POS Modern dengan Manajemen Stok, Resep, Pengeluaran, dan Laporan">
   <title>KASIR GARIS WAKTU</title>
 
   <link rel="manifest" href="manifest.json">
@@ -19,10 +20,6 @@
   <link rel="stylesheet" href="style.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
 
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = { darkMode: 'class' }
-  </script>
 
 </head>
 
@@ -48,9 +45,9 @@
     window.dbCloud = firebase.firestore();
     dbCloud.enablePersistence({ synchronizeTabs: true }).catch(err => {
       if (err.code === 'failed-precondition') {
-        console.warn('Firestore persistence: multiple tabs open');
+        console.warn('Persistence failed: Multiple tabs');
       } else if (err.code === 'unimplemented') {
-        console.warn('Firestore persistence: browser tidak support');
+        console.warn('Persistence failed: Browser no support');
       }
     });
   </script>
@@ -58,7 +55,8 @@
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js" defer></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" defer></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"
+    defer></script>
 
   <script src="js/init.js" defer></script>
   <script src="js/utils.js" defer></script>

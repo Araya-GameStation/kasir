@@ -2,15 +2,15 @@
   "name": "Kasir Garis Waktu",
   "short_name": "GarisWaktu",
   "description": "Sistem Kasir dengan manajemen stok, bahan baku, resep, dan laporan",
-  "start_url": "/kasir/",
-  "id": "/",
+  "start_url": "index.html",
+  "id": ".",
   "display": "standalone",
   "background_color": "#0a7a5f",
   "theme_color": "#0a7a5f",
   "orientation": "any",
   "icons": [
     {
-      "src": "https://araya-gamestation.github.io/kasir/logo.png",
+      "src": "logo.png",
       "sizes": "512x512",
       "type": "image/png"
     }
