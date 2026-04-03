@@ -58,6 +58,9 @@ function renderBahanManager() {
                 <button class="btn-icon-sm btn-icon-warning" onclick="kurangiStokBahanManual('${b.id}')" title="Kurangi Stok">
                   <i class="fas fa-minus-circle"></i>
                 </button>
+                <button class="btn-icon-sm" onclick="lihatRiwayatStok('${b.id}')" title="Riwayat Stok">
+                  <i class="fas fa-history"></i>
+                </button>
                 <button class="btn-icon-sm" onclick="editBahan('${b.id}')" title="Edit">
                   <i class="fas fa-edit"></i>
                 </button>
@@ -426,6 +429,112 @@ async function editBahan(id) {
   };
 }
 
+async function lihatRiwayatStok(bahanId) {
+  const bahan = state.rawMaterials.find(b => b.id === bahanId);
+  if (!bahan) return;
+
+  function _buildRiwayatRows() {
+    const mutations = (state.stockMutations || [])
+      .filter(m => m.bahanId === bahanId)
+      .sort((a, b) => {
+        const da = a.createdAt?.seconds ? a.createdAt.seconds : new Date(a.createdAt).getTime() / 1000;
+        const db = b.createdAt?.seconds ? b.createdAt.seconds : new Date(b.createdAt).getTime() / 1000;
+        return db - da;
+      });
+
+    if (mutations.length === 0) {
+      return `<div class="empty-state"><i class="fas fa-history"></i><p>Belum ada riwayat</p></div>`;
+    }
+
+    return mutations.map(m => {
+      const tgl = m.createdAt?.seconds
+        ? new Date(m.createdAt.seconds * 1000).toLocaleString('id-ID', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' })
+        : '-';
+      const isIn  = m.type === 'in';
+      const isSale = m.source === 'sale';
+      const label = isSale ? 'Penjualan' : m.source === 'manual' ? (isIn ? 'Tambah Manual' : 'Kurang Manual') : m.source || '-';
+      const icon  = isIn ? 'fa-arrow-up text-success' : 'fa-arrow-down text-danger';
+      const sign  = isIn ? '+' : '-';
+      return `
+        <div class="riwayat-stok-row" data-id="${m.id}">
+          <div class="riwayat-stok-left">
+            <i class="fas ${icon}"></i>
+            <div>
+              <div class="riwayat-stok-label">${label}</div>
+              <div class="riwayat-stok-meta">${tgl}${m.notes ? ' · ' + m.notes : ''}</div>
+            </div>
+          </div>
+          <div class="riwayat-stok-right">
+            <span class="riwayat-stok-qty ${isIn ? 'text-success' : 'text-danger'}">
+              ${sign}${m.qty} ${m.satuan || bahan.satuan || ''}
+            </span>
+            <button class="btn-icon-sm btn-icon-danger" title="Hapus & Rollback Stok"
+              onclick="window._hapusMutasiStok('${m.id}','${bahanId}','${m.type}',${m.qty})">
+              <i class="fas fa-trash"></i>
+            </button>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  const modal = document.createElement('div');
+  modal.className = 'modal-overlay';
+  modal.id = 'modal-riwayat-stok';
+  modal.innerHTML = `
+    <div class="modal modal-wide">
+      <div class="modal-header">
+        <div>
+          <h3><i class="fas fa-history"></i> Riwayat Stok</h3>
+          <small class="text-muted">${bahan.name} — Stok: ${bahan.stock} ${bahan.satuan}</small>
+        </div>
+        <button class="btn-icon-sm" onclick="document.getElementById('modal-riwayat-stok').remove()">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      <div class="modal-body riwayat-stok-body" id="riwayat-stok-list">
+        ${_buildRiwayatRows()}
+      </div>
+    </div>
+  `;
+  modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
+  document.body.appendChild(modal);
+
+  window._hapusMutasiStok = async function(mutasiId, bhnId, type, qty) {
+    const result = await Swal.fire({
+      title: 'Hapus Riwayat Stok?',
+      html: `Stok akan di-<b>rollback</b>:<br>
+        ${type === 'in'
+          ? `<span class="text-danger">-${qty} ${bahan.satuan}</span> (pembelian dibatalkan)`
+          : `<span class="text-success">+${qty} ${bahan.satuan}</span> (pengurangan dibatalkan)`}`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Ya, Hapus & Rollback',
+      cancelButtonText: 'Batal',
+      confirmButtonColor: '#dc3545'
+    });
+    if (!result.isConfirmed) return;
+
+    try {
+      const rollback = type === 'in' ? -parseFloat(qty) : parseFloat(qty);
+      const batch = dbCloud.batch();
+      batch.delete(dbCloud.collection('stock_mutations').doc(mutasiId));
+      batch.update(dbCloud.collection('raw_materials').doc(bhnId), {
+        stock: firebase.firestore.FieldValue.increment(rollback)
+      });
+      await batch.commit();
+      if (typeof window.updateAllProductStocks === 'function') {
+        await window.updateAllProductStocks();
+      }
+      Utils.showToast('Riwayat dihapus, stok di-rollback', 'success');
+      const listEl = document.getElementById('riwayat-stok-list');
+      if (listEl) listEl.innerHTML = _buildRiwayatRows();
+    } catch (err) {
+      Utils.showToast('Gagal: ' + err.message, 'error');
+    }
+  };
+}
+
 async function hapusBahan(id) {
   if (!await Utils.showConfirm("Yakin hapus bahan ini?")) return;
   const digunakan = state.menus.some(m => m.resep?.some(r => r.bahanId === id));
@@ -449,6 +558,7 @@ window.renderBahanManager = renderBahanManager;
 window.showAddBahanModal = showAddBahanModal;
 window.tambahStokBahan = tambahStokBahan;
 window.kurangiStokBahanManual = kurangiStokBahanManual;
+window.lihatRiwayatStok = lihatRiwayatStok;
 window.editBahan = editBahan;
 window.hapusBahan = hapusBahan;
 window.sortBahan = sortBahan;

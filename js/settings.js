@@ -233,22 +233,10 @@ function renderSettingsTab() {
     `;
   }
   if (currentSettingsTab === 'backup') {
-    const hasActiveShift = !!state.currentSession;
     return `
       <div class="settings-card">
         <h3><i class="fas fa-database"></i> Backup & Restore</h3>
         <div class="backup-grid">
-          <div class="backup-card">
-            <div class="backup-icon">
-              <i class="fas fa-file-pdf"></i>
-            </div>
-            <h4>Export PDF (Shift Aktif)</h4>
-            <p>Download laporan shift yang sedang berjalan</p>
-            <button class="btn btn-primary" onclick="const b=this;Utils.setButtonLoading(b,true);exportToPDFShift().finally(()=>Utils.setButtonLoading(b,false))" ${!hasActiveShift ? 'disabled' : ''}>
-              <i class="fas fa-download"></i> Export
-            </button>
-            ${!hasActiveShift ? '<small class="text-muted mt-1">*Buka shift terlebih dahulu</small>' : ''}
-          </div>
           <div class="backup-card">
             <div class="backup-icon">
               <i class="fas fa-file-pdf"></i>

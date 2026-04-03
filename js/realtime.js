@@ -61,7 +61,7 @@ function startRealtimeRawMaterials() {
 function startRealtimeStockMutations() {
     const unsubscribe = dbCloud.collection("stock_mutations")
         .orderBy("createdAt", "desc")
-        .limit(100)
+        .limit(500)
         .onSnapshot(snap => {
             state.stockMutations = [];
             snap.forEach(doc => state.stockMutations.push({ id: doc.id, ...doc.data() }));

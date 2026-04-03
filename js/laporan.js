@@ -8,7 +8,10 @@ function renderLaporan() {
       <div class="laporan-tab-bar">
         ${['harian','mingguan','bulanan','shift'].map(m => `
           <button class="tab-btn ${_laporanMode === m ? 'active' : ''}" onclick="window._setLaporanMode('${m}')">
-            ${m === 'harian' ? 'Harian' : m === 'mingguan' ? 'Mingguan' : m === 'bulanan' ? 'Bulanan' : 'Per Shift'}
+            ${m === 'harian' ? '<i class="fas fa-calendar-day"></i> Harian'
+              : m === 'mingguan' ? '<i class="fas fa-calendar-week"></i> Mingguan'
+              : m === 'bulanan' ? '<i class="fas fa-calendar-alt"></i> Bulanan'
+              : '<i class="fas fa-layer-group"></i> Per Shift'}
           </button>
         `).join('')}
       </div>
@@ -26,23 +29,6 @@ function _jamBuka() {
   return { h: h || 8, m: m || 0 };
 }
 
-function _opDayStart(date) {
-  const jb = _jamBuka();
-  const d = new Date(date);
-  d.setHours(jb.h, jb.m, 0, 0);
-  return d;
-}
-
-function _toOpDay(date) {
-  const jb = _jamBuka();
-  const d = new Date(date);
-  const cutoff = new Date(d);
-  cutoff.setHours(jb.h, jb.m, 0, 0);
-  if (d < cutoff) d.setDate(d.getDate() - 1);
-  d.setHours(0, 0, 0, 0);
-  return d;
-}
-
 function _toDate(ts) {
   if (!ts) return new Date(0);
   if (ts.seconds) return new Date(ts.seconds * 1000);
@@ -54,368 +40,516 @@ function _formatTgl(date) {
   return date.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
-function _allTrx() {
-  return state.allTransactions || [];
+function _allTrx()        { return state.allTransactions || []; }
+function _allPengeluaran() { return state.pengeluaran || []; }
+function _allMutations()   { return state.stockMutations || []; }
+
+function _sumTrx(trxList) {
+  const total = trxList.reduce((s, t) => s + (t.total || 0), 0);
+  const cash  = trxList.reduce((s, t) => s + (t.cashAmount || (t.metodeBayar === 'tunai' ? t.total : 0)), 0);
+  const qris  = trxList.reduce((s, t) => s + (t.qrisAmount || (t.metodeBayar === 'qris' ? t.total : 0)), 0);
+  return { total, cash, qris };
 }
 
-function _allPengeluaran() {
-  return state.pengeluaran || [];
+function _shortRupiah(n) {
+  if (n >= 1000000) return (n / 1000000).toFixed(1).replace('.0','') + 'jt';
+  if (n >= 1000)    return (n / 1000).toFixed(0) + 'rb';
+  return String(n);
 }
 
 function _buildLaporanContent() {
-  if (_laporanMode === 'shift') return _buildShiftLaporan();
-  if (_laporanMode === 'harian') return _buildHarianLaporan();
-  if (_laporanMode === 'mingguan') return _buildMingguanLaporan();
-  if (_laporanMode === 'bulanan') return _buildBulananLaporan();
+  if (_laporanMode === 'harian')   return _buildListHarian();
+  if (_laporanMode === 'mingguan') return _buildListMingguan();
+  if (_laporanMode === 'bulanan')  return _buildListBulanan();
+  if (_laporanMode === 'shift')    return _buildListShift();
   return '';
 }
 
-function _buildNavBar(label) {
+function _rowItem(label, sublabel, trxCount, total, isoKey, mode, extra) {
+  const empty = trxCount === 0;
+  return `
+    <div class="laporan-row ${empty ? 'laporan-row-empty' : ''}">
+      <div class="laporan-row-info">
+        <div class="laporan-row-label">${label}</div>
+        ${sublabel ? `<div class="laporan-row-sublabel">${sublabel}</div>` : ''}
+      </div>
+      <div class="laporan-row-stats">
+        <span class="laporan-row-trx">${trxCount}x</span>
+        <span class="laporan-row-total">${empty ? '&mdash;' : 'Rp ' + _shortRupiah(total)}</span>
+      </div>
+      <div class="laporan-row-actions">
+        ${extra || ''}
+        <button class="btn-icon-sm" title="Lihat Detail"
+          onclick="window._showLaporanDetail('${mode}','${isoKey}')">
+          <i class="fas fa-eye"></i>
+        </button>
+        <button class="btn-icon-sm" title="Download PDF"
+          onclick="window._exportLaporanPDF('${mode}','${isoKey}')">
+          <i class="fas fa-file-pdf"></i>
+        </button>
+        <button class="btn-icon-sm btn-icon-danger" title="Hapus Data Periode Ini"
+          onclick="window._hapusLaporanPeriode('${mode}','${isoKey}')">
+          <i class="fas fa-trash"></i>
+        </button>
+      </div>
+    </div>
+  `;
+}
+
+function _navBar(label) {
   return `
     <div class="laporan-nav-bar">
       <button class="btn btn-secondary btn-sm" onclick="window._laporanNav(1)">
         <i class="fas fa-chevron-left"></i>
       </button>
       <span class="laporan-nav-label">${label}</span>
-      <button class="btn btn-secondary btn-sm" onclick="window._laporanNav(-1)" ${_laporanOffset === 0 ? 'disabled' : ''}>
+      <button class="btn btn-secondary btn-sm" onclick="window._laporanNav(-1)"
+        ${_laporanOffset === 0 ? 'disabled' : ''}>
         <i class="fas fa-chevron-right"></i>
       </button>
     </div>
   `;
 }
 
-function _buildStatsCards(total, trxCount, cash, qris, pengeluaran) {
-  const bersih = total - pengeluaran;
+function _listHeader(col1) {
   return `
-    <div class="stats-grid stats-grid-laporan">
-      <div class="stat-card">
-        <div class="stat-label">Total Penjualan</div>
-        <div class="stat-value">Rp ${Utils.formatRupiah(total)}</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-label">Transaksi</div>
-        <div class="stat-value">${trxCount}x</div>
-      </div>
-      <div class="stat-card cash">
-        <div class="stat-label">CASH</div>
-        <div class="stat-value">Rp ${Utils.formatRupiah(cash)}</div>
-      </div>
-      <div class="stat-card qris">
-        <div class="stat-label">QRIS</div>
-        <div class="stat-value">Rp ${Utils.formatRupiah(qris)}</div>
-      </div>
-      ${pengeluaran > 0 ? `
-        <div class="stat-card danger">
-          <div class="stat-label">Pengeluaran</div>
-          <div class="stat-value">-Rp ${Utils.formatRupiah(pengeluaran)}</div>
+    <div class="laporan-list-header">
+      <span>${col1}</span><span>Transaksi</span><span>Total</span><span>Aksi</span>
+    </div>
+  `;
+}
+
+function _buildListHarian() {
+  const jb = _jamBuka();
+  const now = new Date();
+  const base = new Date(now);
+  base.setDate(base.getDate() - _laporanOffset * 7);
+  base.setHours(0, 0, 0, 0);
+
+  const rows = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(base); d.setDate(d.getDate() - i);
+    const ds = new Date(d); ds.setHours(jb.h, jb.m, 0, 0);
+    const de = new Date(ds); de.setDate(de.getDate() + 1);
+    const trxList = _allTrx().filter(t => { const td = _toDate(t.date); return td >= ds && td < de; });
+    const { total } = _sumTrx(trxList);
+    const isToday = d.toDateString() === now.toDateString();
+    const label = _formatTgl(d) + (isToday ? ' <span class="badge badge-success">Hari Ini</span>' : '');
+    return _rowItem(label, null, trxList.length, total, ds.toISOString(), 'harian', '');
+  }).join('');
+
+  const oldest = new Date(base); oldest.setDate(oldest.getDate() - 6);
+  return `
+    ${_navBar(`${_formatTgl(oldest)} – ${_formatTgl(base)}`)}
+    ${_listHeader('Tanggal')}
+    <div class="laporan-row-list">${rows}</div>
+  `;
+}
+
+function _buildListMingguan() {
+  const jb = _jamBuka();
+  const now = new Date();
+  const baseMonth = new Date(now.getFullYear(), now.getMonth() - _laporanOffset, 1);
+
+  const rows = Array.from({ length: 5 }, (_, i) => {
+    const wStart = new Date(baseMonth); wStart.setDate(1 + i * 7);
+    if (wStart.getMonth() !== baseMonth.getMonth()) return '';
+    const wEnd = new Date(wStart); wEnd.setDate(wEnd.getDate() + 7);
+    const ds = new Date(wStart); ds.setHours(jb.h, jb.m, 0, 0);
+    const de = new Date(wEnd); de.setHours(jb.h, jb.m, 0, 0);
+    const trxList = _allTrx().filter(t => { const td = _toDate(t.date); return td >= ds && td < de; });
+    const { total } = _sumTrx(trxList);
+    const sub = `${_formatTgl(wStart)} – ${_formatTgl(new Date(wEnd.getTime() - 86400000))}`;
+    return _rowItem(`Minggu ke-${i + 1}`, sub, trxList.length, total, ds.toISOString(), 'mingguan', '');
+  }).join('');
+
+  const label = baseMonth.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
+  return `
+    ${_navBar(label)}
+    ${_listHeader('Minggu')}
+    <div class="laporan-row-list">${rows}</div>
+  `;
+}
+
+function _buildListBulanan() {
+  const jb = _jamBuka();
+  const now = new Date();
+  const baseYear = now.getFullYear() - _laporanOffset;
+
+  const rows = Array.from({ length: 12 }, (_, i) => {
+    const mStart = new Date(baseYear, i, 1); mStart.setHours(jb.h, jb.m, 0, 0);
+    const mEnd   = new Date(baseYear, i + 1, 1); mEnd.setHours(jb.h, jb.m, 0, 0);
+    const trxList = _allTrx().filter(t => { const td = _toDate(t.date); return td >= mStart && td < mEnd; });
+    const { total } = _sumTrx(trxList);
+    const isNow = i === now.getMonth() && baseYear === now.getFullYear();
+    const label = mStart.toLocaleDateString('id-ID', { month: 'long' })
+      + (isNow ? ' <span class="badge badge-success">Bulan Ini</span>' : '');
+    return _rowItem(label, null, trxList.length, total, mStart.toISOString(), 'bulanan', '');
+  }).join('');
+
+  return `
+    ${_navBar(`Tahun ${baseYear}`)}
+    ${_listHeader('Bulan')}
+    <div class="laporan-row-list">${rows}</div>
+  `;
+}
+
+function _buildListShift() {
+  const sessions = [...(state.allSessions || [])].sort((a, b) =>
+    _toDate(b.waktuBuka) - _toDate(a.waktuBuka)
+  );
+  const pageSize = 10;
+  const start = _laporanOffset * pageSize;
+  const page = sessions.slice(start, start + pageSize);
+  const totalPages = Math.ceil(sessions.length / pageSize);
+
+  if (sessions.length === 0) {
+    return `<div class="empty-state"><i class="fas fa-layer-group"></i><p>Belum ada data shift</p></div>`;
+  }
+
+  const rows = page.map(s => {
+    const wb = _toDate(s.waktuBuka);
+    const wt = s.waktuTutup ? _toDate(s.waktuTutup) : null;
+    const trxSesi = _allTrx().filter(t => t.sessionId === s.id);
+    const { total } = _sumTrx(trxSesi);
+    const isActive = s.status === 'active';
+    const label = `Shift ${s.shift} &mdash; ${s.kasir || '-'}`;
+    const sub = wb.toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
+      + (wt ? ` → ${wt.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}` : ' → sekarang');
+    const extra = isActive ? `<span class="badge badge-success">AKTIF</span>` : '';
+    return _rowItem(label, sub, trxSesi.length, total, s.id, 'shift', extra);
+  }).join('');
+
+  return `
+    <div class="laporan-shift-pagination">
+      <button class="btn btn-secondary btn-sm" onclick="window._laporanNav(1)"
+        ${start + pageSize >= sessions.length ? 'disabled' : ''}>
+        <i class="fas fa-chevron-left"></i> Lama
+      </button>
+      <span class="text-muted">Hal ${_laporanOffset + 1} / ${totalPages}</span>
+      <button class="btn btn-secondary btn-sm" onclick="window._laporanNav(-1)"
+        ${_laporanOffset === 0 ? 'disabled' : ''}>
+        Baru <i class="fas fa-chevron-right"></i>
+      </button>
+    </div>
+    ${_listHeader('Shift')}
+    <div class="laporan-row-list">${rows}</div>
+  `;
+}
+
+function _getPeriodData(mode, isoKey) {
+  const jb = _jamBuka();
+  let trxList = [], pengeluaranList = [], mutationList = [], label = '';
+  let rangeStart, rangeEnd;
+
+  if (mode === 'shift') {
+    const sesi = (state.allSessions || []).find(s => s.id === isoKey);
+    trxList = _allTrx().filter(t => t.sessionId === isoKey);
+    pengeluaranList = _allPengeluaran().filter(p => p.sessionId === isoKey);
+    const trxIds = new Set(trxList.map(t => t.id));
+    mutationList = _allMutations().filter(m => m.type === 'out' && trxIds.has(m.transactionId));
+    label = sesi
+      ? `Shift ${sesi.shift} — ${sesi.kasir || '-'} — ${_formatTgl(_toDate(sesi.waktuBuka))}`
+      : `Shift`;
+    return { trxList, pengeluaranList, mutationList, label };
+  }
+
+  if (mode === 'harian') {
+    rangeStart = new Date(isoKey);
+    rangeEnd = new Date(rangeStart); rangeEnd.setDate(rangeEnd.getDate() + 1);
+    label = _formatTgl(rangeStart);
+  } else if (mode === 'mingguan') {
+    rangeStart = new Date(isoKey);
+    rangeEnd = new Date(rangeStart); rangeEnd.setDate(rangeEnd.getDate() + 7);
+    label = `${_formatTgl(rangeStart)} – ${_formatTgl(new Date(rangeEnd.getTime() - 86400000))}`;
+  } else if (mode === 'bulanan') {
+    rangeStart = new Date(isoKey);
+    rangeEnd = new Date(rangeStart.getFullYear(), rangeStart.getMonth() + 1, 1);
+    rangeEnd.setHours(jb.h, jb.m, 0, 0);
+    label = rangeStart.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
+  }
+
+  trxList = _allTrx().filter(t => { const d = _toDate(t.date); return d >= rangeStart && d < rangeEnd; });
+  pengeluaranList = _allPengeluaran().filter(p => { const d = _toDate(p.createdAt); return d >= rangeStart && d < rangeEnd; });
+  const trxIds = new Set(trxList.map(t => t.id));
+  mutationList = _allMutations().filter(m => m.type === 'out' && trxIds.has(m.transactionId));
+  return { trxList, pengeluaranList, mutationList, label };
+}
+
+function _buildDetailHTML(mode, isoKey) {
+  const { trxList, pengeluaranList, mutationList } = _getPeriodData(mode, isoKey);
+  const { total, cash, qris } = _sumTrx(trxList);
+  const totalPengeluaran = pengeluaranList.reduce((s, p) => s + (p.nominal || 0), 0);
+  const kasBersih = total - totalPengeluaran;
+
+  const recap = {};
+  trxList.forEach(t => (t.items || []).forEach(i => {
+    if (!recap[i.name]) recap[i.name] = { qty: 0, total: 0 };
+    recap[i.name].qty += i.qty;
+    recap[i.name].total += i.subtotal || ((i.price + (i.modifierTotal || 0)) * i.qty);
+  }));
+  const recapSorted = Object.entries(recap).sort((a, b) => b[1].total - a[1].total);
+  const maxRecap = recapSorted[0]?.[1].total || 1;
+
+  const bahanUsage = {};
+  mutationList.forEach(m => {
+    if (!bahanUsage[m.namaBahan]) bahanUsage[m.namaBahan] = { qty: 0, satuan: m.satuan || '' };
+    bahanUsage[m.namaBahan].qty += m.qty;
+  });
+
+  return `
+    <div class="laporan-detail-body">
+      <div class="laporan-detail-section">
+        <div class="laporan-section-title"><i class="fas fa-chart-pie"></i> Ringkasan</div>
+        <div class="detail-stats-grid">
+          <div class="detail-stat"><span>Total Penjualan</span><strong>Rp ${Utils.formatRupiah(total)}</strong></div>
+          <div class="detail-stat"><span>Transaksi</span><strong>${trxList.length}x</strong></div>
+          <div class="detail-stat cash"><span>CASH</span><strong>Rp ${Utils.formatRupiah(cash)}</strong></div>
+          <div class="detail-stat qris"><span>QRIS</span><strong>Rp ${Utils.formatRupiah(qris)}</strong></div>
+          ${totalPengeluaran > 0 ? `
+            <div class="detail-stat danger"><span>Pengeluaran</span><strong>-Rp ${Utils.formatRupiah(totalPengeluaran)}</strong></div>
+            <div class="detail-stat success"><span>Kas Bersih</span><strong>Rp ${Utils.formatRupiah(kasBersih)}</strong></div>
+          ` : ''}
         </div>
-        <div class="stat-card success">
-          <div class="stat-label">Kas Bersih</div>
-          <div class="stat-value">Rp ${Utils.formatRupiah(bersih)}</div>
+      </div>
+
+      <div class="laporan-detail-section">
+        <div class="laporan-section-title"><i class="fas fa-trophy"></i> Produk Terjual</div>
+        ${recapSorted.length === 0
+          ? '<p class="text-muted text-center">Tidak ada data</p>'
+          : `<div class="recap-produk-list">
+              ${recapSorted.map(([name, d], idx) => `
+                <div class="recap-produk-row">
+                  <div class="recap-produk-rank">${idx + 1}</div>
+                  <div class="recap-produk-info">
+                    <div class="recap-produk-name">${name}</div>
+                    <div class="recap-produk-bar-wrap">
+                      <div class="recap-produk-bar" style="width:${Math.round((d.total/maxRecap)*100)}%"></div>
+                    </div>
+                  </div>
+                  <div class="recap-produk-stats">
+                    <span class="recap-produk-qty">${d.qty}x</span>
+                    <span class="recap-produk-total">Rp ${Utils.formatRupiah(d.total)}</span>
+                  </div>
+                </div>
+              `).join('')}
+            </div>`
+        }
+      </div>
+
+      ${pengeluaranList.length > 0 ? `
+        <div class="laporan-detail-section">
+          <div class="laporan-section-title"><i class="fas fa-money-bill-wave"></i> Pengeluaran</div>
+          <div class="detail-pengeluaran-list">
+            ${pengeluaranList.map(p => `
+              <div class="detail-pengeluaran-row">
+                <span>${p.nama}</span>
+                <span class="text-danger">-Rp ${Utils.formatRupiah(p.nominal)}</span>
+              </div>
+            `).join('')}
+            <div class="detail-pengeluaran-row detail-pengeluaran-total">
+              <span>Total</span><span>-Rp ${Utils.formatRupiah(totalPengeluaran)}</span>
+            </div>
+          </div>
+        </div>
+      ` : ''}
+
+      ${Object.keys(bahanUsage).length > 0 ? `
+        <div class="laporan-detail-section">
+          <div class="laporan-section-title"><i class="fas fa-boxes"></i> Pemakaian Stok Bahan</div>
+          <div class="detail-bahan-list">
+            ${Object.entries(bahanUsage).sort((a,b) => b[1].qty - a[1].qty).map(([nama, d]) => `
+              <div class="detail-bahan-row">
+                <span>${nama}</span>
+                <span class="text-muted">${d.qty} ${d.satuan}</span>
+              </div>
+            `).join('')}
+          </div>
         </div>
       ` : ''}
     </div>
   `;
 }
 
-function _buildRecapProduk(trxList) {
-  const recap = {};
-  trxList.forEach(t => (t.items || []).forEach(i => {
-    const key = i.name;
-    if (!recap[key]) recap[key] = { qty: 0, total: 0 };
-    recap[key].qty += i.qty;
-    recap[key].total += i.subtotal || ((i.price + (i.modifierTotal || 0)) * i.qty);
-  }));
-  const sorted = Object.entries(recap).sort((a, b) => b[1].total - a[1].total);
-  if (sorted.length === 0) return '<p class="text-muted text-center">Belum ada data produk</p>';
-  const max = sorted[0][1].total;
-  return `
-    <div class="recap-produk-list">
-      ${sorted.map(([name, d], idx) => `
-        <div class="recap-produk-row">
-          <div class="recap-produk-rank">${idx + 1}</div>
-          <div class="recap-produk-info">
-            <div class="recap-produk-name">${name}</div>
-            <div class="recap-produk-bar-wrap">
-              <div class="recap-produk-bar" style="width:${max > 0 ? Math.round((d.total/max)*100) : 0}%"></div>
-            </div>
-          </div>
-          <div class="recap-produk-stats">
-            <span class="recap-produk-qty">${d.qty}x</span>
-            <span class="recap-produk-total">Rp ${Utils.formatRupiah(d.total)}</span>
-          </div>
+window._showLaporanDetail = function(mode, isoKey) {
+  const { label } = _getPeriodData(mode, isoKey);
+  const modal = document.createElement('div');
+  modal.className = 'modal-overlay';
+  modal.id = 'modal-laporan-detail';
+  modal.innerHTML = `
+    <div class="modal modal-wide">
+      <div class="modal-header">
+        <div>
+          <h3><i class="fas fa-chart-bar"></i> Detail Laporan</h3>
+          <small class="text-muted">${label}</small>
         </div>
-      `).join('')}
-    </div>
-  `;
-}
-
-function _buildBarChart(points, labelFn) {
-  if (points.length === 0) return '<p class="text-muted text-center">Belum ada data</p>';
-  const max = Math.max(...points.map(p => p.val), 1);
-  return `
-    <div class="laporan-bar-chart">
-      ${points.map(p => `
-        <div class="bar-chart-col">
-          <div class="bar-chart-val">${p.val > 0 ? _shortRupiah(p.val) : ''}</div>
-          <div class="bar-chart-bar-wrap">
-            <div class="bar-chart-bar ${p.val === 0 ? 'bar-empty' : ''}"
-              style="height:${max > 0 ? Math.round((p.val/max)*100) : 0}%">
-            </div>
-          </div>
-          <div class="bar-chart-label">${labelFn(p)}</div>
-        </div>
-      `).join('')}
-    </div>
-  `;
-}
-
-function _shortRupiah(n) {
-  if (n >= 1000000) return (n / 1000000).toFixed(1).replace('.0', '') + 'jt';
-  if (n >= 1000) return (n / 1000).toFixed(0) + 'rb';
-  return String(n);
-}
-
-function _sumTrx(trxList) {
-  const total = trxList.reduce((s, t) => s + (t.total || 0), 0);
-  const cash = trxList.reduce((s, t) => s + (t.cashAmount || (t.metodeBayar === 'tunai' ? t.total : 0)), 0);
-  const qris = trxList.reduce((s, t) => s + (t.qrisAmount || (t.metodeBayar === 'qris' ? t.total : 0)), 0);
-  return { total, cash, qris };
-}
-
-function _exportBtn(label, fn) {
-  return `
-    <button class="btn btn-secondary btn-sm" onclick="${fn}">
-      <i class="fas fa-file-export"></i> ${label}
-    </button>
-  `;
-}
-
-function _buildHarianLaporan() {
-  const now = new Date();
-  const targetOpDay = new Date(now);
-  targetOpDay.setDate(targetOpDay.getDate() - _laporanOffset);
-  targetOpDay.setHours(0, 0, 0, 0);
-
-  const jb = _jamBuka();
-  const dayStart = new Date(targetOpDay);
-  dayStart.setHours(jb.h, jb.m, 0, 0);
-  const dayEnd = new Date(dayStart);
-  dayEnd.setDate(dayEnd.getDate() + 1);
-
-  const trxList = _allTrx().filter(t => {
-    const d = _toDate(t.date);
-    return d >= dayStart && d < dayEnd;
-  });
-
-  const pengeluaranList = _allPengeluaran().filter(p => {
-    const d = _toDate(p.createdAt);
-    return d >= dayStart && d < dayEnd;
-  });
-  const totalPengeluaran = pengeluaranList.reduce((s, p) => s + (p.nominal || 0), 0);
-  const { total, cash, qris } = _sumTrx(trxList);
-
-  const labelTgl = _formatTgl(targetOpDay) + ` (buka ${jb.h.toString().padStart(2,'0')}:${jb.m.toString().padStart(2,'0')})`;
-
-  const allHours = Array.from({ length: 24 }, (_, i) => {
-    const h = (jb.h + i) % 24;
-    const hStart = new Date(dayStart);
-    hStart.setHours(h, 0, 0, 0);
-    if (h < jb.h) hStart.setDate(hStart.getDate() + 1);
-    const hEnd = new Date(hStart);
-    hEnd.setHours(hEnd.getHours() + 1);
-    const val = trxList.filter(t => {
-      const d = _toDate(t.date); return d >= hStart && d < hEnd;
-    }).reduce((s, t) => s + t.total, 0);
-    return { label: `${h.toString().padStart(2,'0')}`, val };
-  });
-  const lastDataIdx = allHours.map((p, i) => p.val > 0 ? i : -1).filter(i => i >= 0).pop() ?? -1;
-  const hours = lastDataIdx >= 0
-    ? allHours.slice(0, Math.min(lastDataIdx + 2, 24))
-    : allHours.slice(0, 12);
-
-  return `
-    ${_buildNavBar(labelTgl)}
-    ${_buildStatsCards(total, trxList.length, cash, qris, totalPengeluaran)}
-    <div class="laporan-section">
-      <div class="laporan-section-title"><i class="fas fa-chart-bar"></i> Penjualan per Jam</div>
-      ${_buildBarChart(hours, p => p.label)}
-    </div>
-    <div class="laporan-section">
-      <div class="laporan-section-title"><i class="fas fa-trophy"></i> Rekap Produk</div>
-      ${_buildRecapProduk(trxList)}
-    </div>
-    <div class="laporan-export-row">
-      ${_exportBtn('Export PDF', `window._exportLaporanPDF('harian','${targetOpDay.toISOString()}')`)}
-    </div>
-  `;
-}
-
-function _buildMingguanLaporan() {
-  const now = new Date();
-  const jb = _jamBuka();
-  const todayOpDay = _toOpDay(now);
-  const weekStart = new Date(todayOpDay);
-  weekStart.setDate(weekStart.getDate() - weekStart.getDay() - (_laporanOffset * 7));
-  const weekEnd = new Date(weekStart);
-  weekEnd.setDate(weekEnd.getDate() + 7);
-
-  const wStartTs = new Date(weekStart); wStartTs.setHours(jb.h, jb.m, 0, 0);
-  const wEndTs = new Date(weekEnd); wEndTs.setHours(jb.h, jb.m, 0, 0);
-
-  const trxList = _allTrx().filter(t => {
-    const d = _toDate(t.date); return d >= wStartTs && d < wEndTs;
-  });
-  const pengeluaranList = _allPengeluaran().filter(p => {
-    const d = _toDate(p.createdAt); return d >= wStartTs && d < wEndTs;
-  });
-  const totalPengeluaran = pengeluaranList.reduce((s, p) => s + (p.nominal || 0), 0);
-  const { total, cash, qris } = _sumTrx(trxList);
-
-  const hariLabel = ['Min','Sen','Sel','Rab','Kam','Jum','Sab'];
-  const days = Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(weekStart); d.setDate(d.getDate() + i);
-    const ds = new Date(d); ds.setHours(jb.h, jb.m, 0, 0);
-    const de = new Date(ds); de.setDate(de.getDate() + 1);
-    const val = trxList.filter(t => { const td = _toDate(t.date); return td >= ds && td < de; })
-      .reduce((s, t) => s + t.total, 0);
-    return { label: hariLabel[d.getDay()], val };
-  });
-
-  const label = `${_formatTgl(weekStart)} – ${_formatTgl(new Date(weekEnd.getTime() - 86400000))}`;
-  return `
-    ${_buildNavBar(label)}
-    ${_buildStatsCards(total, trxList.length, cash, qris, totalPengeluaran)}
-    <div class="laporan-section">
-      <div class="laporan-section-title"><i class="fas fa-chart-bar"></i> Penjualan per Hari</div>
-      ${_buildBarChart(days, p => p.label)}
-    </div>
-    <div class="laporan-section">
-      <div class="laporan-section-title"><i class="fas fa-trophy"></i> Rekap Produk</div>
-      ${_buildRecapProduk(trxList)}
-    </div>
-    <div class="laporan-export-row">
-      ${_exportBtn('Export PDF', `window._exportLaporanPDF('mingguan','${weekStart.toISOString()}')`)}
-    </div>
-  `;
-}
-
-function _buildBulananLaporan() {
-  const now = new Date();
-  const jb = _jamBuka();
-  const target = new Date(now.getFullYear(), now.getMonth() - _laporanOffset, 1);
-  const mStart = new Date(target.getFullYear(), target.getMonth(), 1);
-  mStart.setHours(jb.h, jb.m, 0, 0);
-  const mEnd = new Date(target.getFullYear(), target.getMonth() + 1, 1);
-  mEnd.setHours(jb.h, jb.m, 0, 0);
-
-  const trxList = _allTrx().filter(t => {
-    const d = _toDate(t.date); return d >= mStart && d < mEnd;
-  });
-  const pengeluaranList = _allPengeluaran().filter(p => {
-    const d = _toDate(p.createdAt); return d >= mStart && d < mEnd;
-  });
-  const totalPengeluaran = pengeluaranList.reduce((s, p) => s + (p.nominal || 0), 0);
-  const { total, cash, qris } = _sumTrx(trxList);
-
-  const daysInMonth = new Date(target.getFullYear(), target.getMonth() + 1, 0).getDate();
-  const days = Array.from({ length: daysInMonth }, (_, i) => {
-    const d = new Date(target.getFullYear(), target.getMonth(), i + 1);
-    const ds = new Date(d); ds.setHours(jb.h, jb.m, 0, 0);
-    const de = new Date(ds); de.setDate(de.getDate() + 1);
-    const val = trxList.filter(t => { const td = _toDate(t.date); return td >= ds && td < de; })
-      .reduce((s, t) => s + t.total, 0);
-    return { label: String(i + 1), val };
-  });
-
-  const label = target.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
-  return `
-    ${_buildNavBar(label)}
-    ${_buildStatsCards(total, trxList.length, cash, qris, totalPengeluaran)}
-    <div class="laporan-section">
-      <div class="laporan-section-title"><i class="fas fa-chart-bar"></i> Penjualan per Tanggal</div>
-      ${_buildBarChart(days, p => p.label)}
-    </div>
-    <div class="laporan-section">
-      <div class="laporan-section-title"><i class="fas fa-trophy"></i> Rekap Produk</div>
-      ${_buildRecapProduk(trxList)}
-    </div>
-    <div class="laporan-export-row">
-      ${_exportBtn('Export PDF', `window._exportLaporanPDF('bulanan','${mStart.toISOString()}')`)}
-    </div>
-  `;
-}
-
-function _buildShiftLaporan() {
-  const sessions = [...(state.allSessions || [])].sort((a, b) => {
-    const da = _toDate(b.waktuBuka); const db = _toDate(a.waktuBuka); return da - db;
-  });
-
-  const pageSize = 10;
-  const start = _laporanOffset * pageSize;
-  const pageSessions = sessions.slice(start, start + pageSize);
-  const totalPages = Math.ceil(sessions.length / pageSize);
-
-  if (sessions.length === 0) {
-    return `<div class="empty-state"><i class="fas fa-history"></i><p>Belum ada data shift</p></div>`;
-  }
-
-  const rows = pageSessions.map(s => {
-    const wb = _toDate(s.waktuBuka);
-    const wt = s.waktuTutup ? _toDate(s.waktuTutup) : null;
-    const trxSesi = _allTrx().filter(t => t.sessionId === s.id);
-    const { total, cash, qris } = _sumTrx(trxSesi);
-    const pengeluaranSesi = _allPengeluaran().filter(p => p.sessionId === s.id);
-    const totalPengeluaran = pengeluaranSesi.reduce((sum, p) => sum + (p.nominal || 0), 0);
-    const isActive = s.status === 'active';
-
-    return `
-      <div class="shift-laporan-card card ${isActive ? 'shift-active-card' : ''}">
-        <div class="shift-laporan-header">
-          <div class="shift-laporan-info">
-            <div class="shift-laporan-title">
-              <span class="session-badge session-badge-primary">SHIFT ${s.shift}</span>
-              ${isActive ? '<span class="badge badge-success">AKTIF</span>' : ''}
-            </div>
-            <div class="shift-laporan-meta">
-              <i class="fas fa-user"></i> ${s.kasir || '-'}
-            </div>
-            <div class="shift-laporan-meta">
-              <i class="fas fa-clock"></i>
-              ${wb.toLocaleString('id-ID', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' })}
-              ${wt ? ` → ${wt.toLocaleString('id-ID', { hour:'2-digit', minute:'2-digit' })}` : ' → sekarang'}
-            </div>
-          </div>
-          <div class="shift-laporan-summary">
-            <div class="shift-stat"><span>Transaksi</span><strong>${trxSesi.length}x</strong></div>
-            <div class="shift-stat"><span>Total</span><strong>Rp ${Utils.formatRupiah(total)}</strong></div>
-            <div class="shift-stat"><span>Cash</span><strong>Rp ${Utils.formatRupiah(cash)}</strong></div>
-            <div class="shift-stat"><span>QRIS</span><strong>Rp ${Utils.formatRupiah(qris)}</strong></div>
-            ${totalPengeluaran > 0 ? `<div class="shift-stat text-danger"><span>Pengeluaran</span><strong>-Rp ${Utils.formatRupiah(totalPengeluaran)}</strong></div>` : ''}
-          </div>
-        </div>
-        <div class="shift-laporan-top-produk">
-          ${_buildRecapProduk(trxSesi)}
+        <div class="modal-header-actions">
+          <button class="btn btn-sm btn-secondary"
+            onclick="window._exportLaporanPDF('${mode}','${isoKey}')">
+            <i class="fas fa-file-pdf"></i> PDF
+          </button>
+          <button class="btn-icon-sm" onclick="document.getElementById('modal-laporan-detail').remove()">
+            <i class="fas fa-times"></i>
+          </button>
         </div>
       </div>
-    `;
-  }).join('');
-
-  return `
-    <div class="laporan-shift-pagination">
-      <button class="btn btn-secondary btn-sm" onclick="window._laporanNav(1)" ${start + pageSize >= sessions.length ? 'disabled' : ''}>
-        <i class="fas fa-chevron-left"></i> Lebih lama
-      </button>
-      <span class="text-muted">Hal ${Math.floor(_laporanOffset) + 1} / ${totalPages}</span>
-      <button class="btn btn-secondary btn-sm" onclick="window._laporanNav(-1)" ${_laporanOffset === 0 ? 'disabled' : ''}>
-        Terbaru <i class="fas fa-chevron-right"></i>
-      </button>
-    </div>
-    <div class="stack-y">
-      ${rows}
+      <div class="modal-body">
+        ${_buildDetailHTML(mode, isoKey)}
+      </div>
     </div>
   `;
-}
+  modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
+  document.body.appendChild(modal);
+};
+
+window._hapusLaporanPeriode = async function(mode, isoKey) {
+  const { trxList, label } = _getPeriodData(mode, isoKey);
+  if (trxList.length === 0) { Utils.showToast('Tidak ada data untuk dihapus', 'warning'); return; }
+
+  const result = await Swal.fire({
+    title: 'Hapus Data Laporan?',
+    html: `<b>${label}</b><br><br>${trxList.length} transaksi akan dihapus permanen.<br>
+      <small class="text-muted">Stok bahan tidak akan dikembalikan.</small>`,
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonText: 'Ya, Hapus',
+    cancelButtonText: 'Batal',
+    confirmButtonColor: '#dc3545'
+  });
+  if (!result.isConfirmed) return;
+
+  try {
+    const ids = trxList.map(t => t.id);
+    for (let i = 0; i < ids.length; i += 400) {
+      const batch = dbCloud.batch();
+      ids.slice(i, i + 400).forEach(id =>
+        batch.delete(dbCloud.collection('transactions').doc(id))
+      );
+      await batch.commit();
+    }
+    Utils.showToast(`${trxList.length} transaksi dihapus`, 'success');
+    _refreshLaporanContent();
+  } catch (err) {
+    Utils.showToast('Gagal hapus: ' + err.message, 'error');
+  }
+};
+
+window._exportLaporanPDF = async function(mode, isoKey) {
+  try {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    const toko = state.settings?.toko || {};
+    const { trxList, pengeluaranList, mutationList, label } = _getPeriodData(mode, isoKey);
+    const { total, cash, qris } = _sumTrx(trxList);
+    const totalPengeluaran = pengeluaranList.reduce((s, p) => s + (p.nominal || 0), 0);
+    const kasBersih = total - totalPengeluaran;
+
+    const recap = {};
+    trxList.forEach(t => (t.items || []).forEach(i => {
+      if (!recap[i.name]) recap[i.name] = { qty: 0, total: 0 };
+      recap[i.name].qty += i.qty;
+      recap[i.name].total += i.subtotal || ((i.price + (i.modifierTotal || 0)) * i.qty);
+    }));
+
+    const bahanUsage = {};
+    mutationList.forEach(m => {
+      if (!bahanUsage[m.namaBahan]) bahanUsage[m.namaBahan] = { qty: 0, satuan: m.satuan || '' };
+      bahanUsage[m.namaBahan].qty += m.qty;
+    });
+
+    const C1 = 15, C2 = 195;
+    let y = 15;
+    const hr = () => { doc.line(C1, y, C2, y); y += 4; };
+
+    doc.setFontSize(14); doc.setFont(undefined, 'bold');
+    doc.text(toko.nama || 'GARIS WAKTU', 105, y, { align: 'center' }); y += 7;
+    doc.setFontSize(8); doc.setFont(undefined, 'normal');
+    if (toko.alamat) { doc.text(toko.alamat, 105, y, { align: 'center' }); y += 4; }
+    if (toko.telepon) { doc.text(toko.telepon, 105, y, { align: 'center' }); y += 4; }
+    y += 2; hr();
+
+    const modeLabel = { harian:'Harian', mingguan:'Mingguan', bulanan:'Bulanan', shift:'Per Shift' }[mode] || mode;
+    doc.setFontSize(11); doc.setFont(undefined, 'bold');
+    doc.text(`Laporan ${modeLabel}`, 105, y, { align: 'center' }); y += 5;
+    doc.setFontSize(8); doc.setFont(undefined, 'normal');
+    doc.text(label, 105, y, { align: 'center' }); y += 4;
+    doc.text(`Dicetak: ${new Date().toLocaleString('id-ID')}`, 105, y, { align: 'center' }); y += 5;
+    hr();
+
+    doc.setFontSize(10); doc.setFont(undefined, 'bold');
+    doc.text('RINGKASAN PENJUALAN', C1, y); y += 5;
+    doc.setFontSize(8);
+    const sRows = [
+      ['Total Penjualan', `Rp ${Utils.formatRupiah(total)}`],
+      ['Total Transaksi', `${trxList.length}x`],
+      ['CASH', `Rp ${Utils.formatRupiah(cash)}`],
+      ['QRIS', `Rp ${Utils.formatRupiah(qris)}`],
+      ...(totalPengeluaran > 0 ? [
+        ['Pengeluaran', `-Rp ${Utils.formatRupiah(totalPengeluaran)}`],
+        ['Kas Bersih', `Rp ${Utils.formatRupiah(kasBersih)}`]
+      ] : [])
+    ];
+    sRows.forEach(([k, v]) => {
+      doc.setFont(undefined, 'normal'); doc.text(k, C1 + 3, y);
+      doc.setFont(undefined, k === 'Kas Bersih' ? 'bold' : 'normal');
+      doc.text(v, C2, y, { align: 'right' }); y += 5;
+    });
+    y += 2;
+
+    const recapRows = Object.entries(recap).sort((a,b) => b[1].total - a[1].total)
+      .map(([n, d]) => [n, String(d.qty), `Rp ${Utils.formatRupiah(d.total)}`]);
+    if (recapRows.length > 0) {
+      doc.autoTable({
+        startY: y,
+        head: [['Produk', 'Qty', 'Total']],
+        body: recapRows,
+        margin: { left: C1, right: 15 },
+        styles: { fontSize: 8 },
+        headStyles: { fillColor: [10, 122, 95] },
+        columnStyles: { 1: { cellWidth: 20, halign: 'center' }, 2: { cellWidth: 40, halign: 'right' } }
+      });
+      y = doc.lastAutoTable.finalY + 5;
+    }
+
+    if (pengeluaranList.length > 0) {
+      hr();
+      doc.setFontSize(10); doc.setFont(undefined, 'bold');
+      doc.text('PENGELUARAN', C1, y); y += 5;
+      doc.autoTable({
+        startY: y,
+        head: [['Keterangan', 'Nominal']],
+        body: pengeluaranList.map(p => [p.nama, `Rp ${Utils.formatRupiah(p.nominal)}`]),
+        foot: [['Total', `Rp ${Utils.formatRupiah(totalPengeluaran)}`]],
+        margin: { left: C1, right: 15 },
+        styles: { fontSize: 8 },
+        headStyles: { fillColor: [220, 53, 69] },
+        footStyles: { fontStyle: 'bold' },
+        columnStyles: { 1: { halign: 'right' } }
+      });
+      y = doc.lastAutoTable.finalY + 5;
+    }
+
+    if (Object.keys(bahanUsage).length > 0) {
+      hr();
+      doc.setFontSize(10); doc.setFont(undefined, 'bold');
+      doc.text('PEMAKAIAN STOK BAHAN', C1, y); y += 5;
+      doc.autoTable({
+        startY: y,
+        head: [['Bahan', 'Pemakaian']],
+        body: Object.entries(bahanUsage).sort((a,b) => b[1].qty - a[1].qty)
+          .map(([n, d]) => [n, `${d.qty} ${d.satuan}`]),
+        margin: { left: C1, right: 15 },
+        styles: { fontSize: 8 },
+        headStyles: { fillColor: [13, 110, 253] },
+        columnStyles: { 1: { halign: 'right' } }
+      });
+    }
+
+    doc.save(`laporan-${mode}-${label.replace(/[^a-z0-9]/gi,'_').substring(0,40)}.pdf`);
+    Utils.showToast('PDF berhasil diunduh', 'success');
+  } catch (err) {
+    Utils.showToast('Gagal export PDF: ' + err.message, 'error');
+  }
+};
 
 window._setLaporanMode = function(mode) {
   _laporanMode = mode;
@@ -430,93 +564,13 @@ window._laporanNav = function(dir) {
 
 function _refreshLaporanContent() {
   const el = document.getElementById('laporan-content');
-  if (el) {
-    el.innerHTML = _buildLaporanContent();
-  } else {
-    renderLaporan();
-  }
+  if (el) el.innerHTML = _buildLaporanContent();
+  else renderLaporan();
   document.querySelectorAll('.tab-btn').forEach(btn => {
-    const mode = btn.textContent.trim();
-    const modeMap = { 'Harian': 'harian', 'Mingguan': 'mingguan', 'Bulanan': 'bulanan', 'Per Shift': 'shift' };
-    btn.classList.toggle('active', modeMap[mode] === _laporanMode);
+    const modeMap = { 'Harian':'harian', 'Mingguan':'mingguan', 'Bulanan':'bulanan', 'Per Shift':'shift' };
+    const txt = btn.textContent.trim();
+    btn.classList.toggle('active', Object.entries(modeMap).some(([k,v]) => txt.includes(k) && v === _laporanMode));
   });
 }
-
-window._exportLaporanPDF = async function(mode, isoDate) {
-  try {
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-    const toko = state.settings?.toko || {};
-    const jb = _jamBuka();
-
-    let trxList = [];
-    let label = '';
-    const refDate = new Date(isoDate);
-
-    if (mode === 'harian') {
-      const dayStart = new Date(refDate); dayStart.setHours(jb.h, jb.m, 0, 0);
-      const dayEnd = new Date(dayStart); dayEnd.setDate(dayEnd.getDate() + 1);
-      trxList = _allTrx().filter(t => { const d = _toDate(t.date); return d >= dayStart && d < dayEnd; });
-      label = _formatTgl(refDate);
-    } else if (mode === 'mingguan') {
-      const wEnd = new Date(refDate); wEnd.setDate(wEnd.getDate() + 7); wEnd.setHours(jb.h, jb.m, 0, 0);
-      const wStart = new Date(refDate); wStart.setHours(jb.h, jb.m, 0, 0);
-      trxList = _allTrx().filter(t => { const d = _toDate(t.date); return d >= wStart && d < wEnd; });
-      label = `${_formatTgl(refDate)} – ${_formatTgl(new Date(wEnd.getTime() - 86400000))}`;
-    } else if (mode === 'bulanan') {
-      const mEnd = new Date(refDate.getFullYear(), refDate.getMonth() + 1, 1); mEnd.setHours(jb.h, jb.m, 0, 0);
-      trxList = _allTrx().filter(t => { const d = _toDate(t.date); return d >= refDate && d < mEnd; });
-      label = refDate.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
-    }
-
-    const { total, cash, qris } = _sumTrx(trxList);
-    const recap = {};
-    trxList.forEach(t => (t.items || []).forEach(i => {
-      if (!recap[i.name]) recap[i.name] = { qty: 0, total: 0 };
-      recap[i.name].qty += i.qty;
-      recap[i.name].total += i.subtotal || (i.price * i.qty);
-    }));
-
-    let y = 15;
-    doc.setFontSize(14); doc.setFont(undefined, 'bold');
-    doc.text(toko.nama || 'GARIS WAKTU', 105, y, { align: 'center' }); y += 7;
-    doc.setFontSize(10); doc.setFont(undefined, 'normal');
-    doc.text(`Laporan ${mode.charAt(0).toUpperCase() + mode.slice(1)}: ${label}`, 105, y, { align: 'center' }); y += 5;
-    doc.text(`Dicetak: ${new Date().toLocaleString('id-ID')}`, 105, y, { align: 'center' }); y += 8;
-    doc.line(15, y, 195, y); y += 6;
-
-    doc.setFont(undefined, 'bold');
-    doc.text('Ringkasan', 15, y); y += 6;
-    doc.setFont(undefined, 'normal');
-    const summary = [
-      ['Total Penjualan', `Rp ${Utils.formatRupiah(total)}`],
-      ['Total Transaksi', `${trxList.length}x`],
-      ['CASH', `Rp ${Utils.formatRupiah(cash)}`],
-      ['QRIS', `Rp ${Utils.formatRupiah(qris)}`],
-    ];
-    summary.forEach(([k, v]) => {
-      doc.text(k, 20, y); doc.text(v, 195, y, { align: 'right' }); y += 5;
-    });
-    y += 4;
-
-    const recapRows = Object.entries(recap).sort((a, b) => b[1].total - a[1].total).map(([name, d]) => [
-      name, String(d.qty), `Rp ${Utils.formatRupiah(d.total)}`
-    ]);
-
-    doc.autoTable({
-      startY: y,
-      head: [['Produk', 'Qty', 'Total']],
-      body: recapRows,
-      margin: { left: 15, right: 15 },
-      styles: { fontSize: 9 },
-      headStyles: { fillColor: [10, 122, 95] }
-    });
-
-    doc.save(`laporan-${mode}-${label.replace(/[^a-z0-9]/gi, '_')}.pdf`);
-    Utils.showToast('PDF berhasil diunduh', 'success');
-  } catch (err) {
-    Utils.showToast('Gagal export PDF: ' + err.message, 'error');
-  }
-};
 
 window.renderLaporan = renderLaporan;
