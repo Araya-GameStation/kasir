@@ -1,0 +1,638 @@
+/* ============================================================
+   STYLE UPGRADE — Modifier, Open Bill, Laporan
+   Semua class baru, tidak override style.css lama
+   ============================================================ */
+
+/* ── BADGE SYSTEM ─────────────────────────────────────────── */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  line-height: 1.4;
+}
+.badge-danger   { background: var(--danger, #dc3545);  color: #fff; }
+.badge-secondary{ background: var(--gray-200, #e9ecef); color: var(--text-muted, #6c757d); }
+.badge-info     { background: var(--info, #0dcaf0);    color: #fff; }
+.badge-success  { background: var(--success, #198754); color: #fff; }
+.badge-warning  { background: var(--warning, #ffc107); color: #212529; }
+.ml-1           { margin-left: 4px; }
+
+/* ── MODAL WIDE ───────────────────────────────────────────── */
+.modal-wide {
+  width: min(96vw, 560px);
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  border-radius: 16px;
+  overflow: hidden;
+}
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border-color, #dee2e6);
+  flex-shrink: 0;
+}
+.modal-header h3 { margin: 0; font-size: 1rem; }
+.modal-body {
+  padding: 16px 20px;
+  overflow-y: auto;
+  flex: 1;
+}
+.modal-footer-inline {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  padding: 12px 20px;
+  border-top: 1px solid var(--border-color, #dee2e6);
+  flex-shrink: 0;
+}
+.form-row-equal {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+/* ── MODIFIER MANAGER ─────────────────────────────────────── */
+.modifier-group-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.modifier-group-card {
+  border-radius: 12px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.modifier-group-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.modifier-group-info { flex: 1; min-width: 0; }
+.modifier-group-name {
+  font-weight: 700;
+  font-size: 0.95rem;
+  margin-bottom: 4px;
+}
+.modifier-group-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.modifier-group-actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.modifier-options-preview {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.modifier-option-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--surface-2, #f1f3f5);
+  font-size: 0.78rem;
+  font-weight: 500;
+}
+.modifier-option-price-chip {
+  color: var(--primary, #0a7a5f);
+  font-weight: 700;
+}
+.modifier-linked-menus {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.78rem;
+  color: var(--text-muted, #6c757d);
+  padding-top: 4px;
+  border-top: 1px solid var(--border-color, #dee2e6);
+}
+
+/* Modifier editor */
+.modifier-options-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.modifier-option-row {
+  display: grid;
+  grid-template-columns: 1fr 130px auto auto;
+  gap: 8px;
+  align-items: center;
+}
+.modifier-default-label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.8rem;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.mg-add-opt-btn { align-self: flex-start; }
+.modifier-menu-link-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 6px;
+  max-height: 180px;
+  overflow-y: auto;
+  padding: 4px;
+}
+
+/* ── MODIFIER SELECT MODAL ───────────────────────────────── */
+.modifier-group-section {
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border-color, #dee2e6);
+}
+.modifier-group-section:last-child { border-bottom: none; }
+.modifier-group-label {
+  font-weight: 700;
+  font-size: 0.9rem;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.modifier-options-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 8px;
+}
+.modifier-opt-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 10px 8px;
+  border-radius: 10px;
+  border: 2px solid var(--border-color, #dee2e6);
+  background: var(--surface, #fff);
+  cursor: pointer;
+  font-size: 0.82rem;
+  font-weight: 500;
+  transition: all 0.15s;
+  text-align: center;
+  line-height: 1.3;
+}
+.modifier-opt-btn.selected {
+  border-color: var(--primary, #0a7a5f);
+  background: color-mix(in srgb, var(--primary, #0a7a5f) 12%, transparent);
+  color: var(--primary, #0a7a5f);
+}
+.modifier-opt-price {
+  font-size: 0.72rem;
+  color: var(--primary, #0a7a5f);
+  font-weight: 700;
+}
+.modifier-opt-btn.selected .modifier-opt-price { color: var(--primary, #0a7a5f); }
+
+/* ── CART ITEM UPGRADE ───────────────────────────────────── */
+.cart-item {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+.cart-item-main { flex: 1; min-width: 0; }
+.cart-item-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.cart-item-modifiers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 3px 0;
+}
+.cart-modifier-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--primary, #0a7a5f) 10%, transparent);
+  color: var(--primary, #0a7a5f);
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+.cart-item-notes-wrap { margin: 4px 0; }
+.cart-notes-input {
+  width: 100%;
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--border-color, #dee2e6);
+  font-size: 0.78rem;
+  background: var(--surface-2, #f8f9fa);
+  color: var(--text, #212529);
+  outline: none;
+  transition: border-color 0.15s;
+}
+.cart-notes-input:focus { border-color: var(--primary, #0a7a5f); }
+.cart-footer-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.card-modifier-badge {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  background: var(--primary, #0a7a5f);
+  color: #fff;
+  border-radius: 999px;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.65rem;
+}
+
+/* ── MEJA — OPEN BILL STATE ──────────────────────────────── */
+.table-btn-occupied {
+  border: 2px solid var(--warning, #ffc107) !important;
+  background: color-mix(in srgb, var(--warning, #ffc107) 8%, var(--surface, #fff));
+  position: relative;
+}
+.table-open-bill-badge {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--warning-dark, #a07800);
+  margin-top: 3px;
+}
+
+/* ── OPEN BILL LIST MODAL ────────────────────────────────── */
+.open-bill-list-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+.open-bill-list-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: var(--surface-2, #f8f9fa);
+  border: 1px solid var(--border-color, #dee2e6);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.open-bill-list-item:hover {
+  background: color-mix(in srgb, var(--primary, #0a7a5f) 6%, var(--surface-2, #f8f9fa));
+}
+.open-bill-list-left { flex: 1; min-width: 0; }
+.open-bill-list-meja {
+  font-weight: 700;
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.open-bill-list-meta {
+  font-size: 0.78rem;
+  color: var(--text-muted, #6c757d);
+  margin-top: 2px;
+}
+.open-bill-list-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.open-bill-list-total {
+  font-weight: 700;
+  font-size: 0.92rem;
+  color: var(--primary, #0a7a5f);
+}
+.open-bill-list-actions {
+  display: flex;
+  gap: 6px;
+}
+
+/* ── LAPORAN ─────────────────────────────────────────────── */
+.laporan-tab-bar {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+  scrollbar-width: none;
+}
+.laporan-tab-bar::-webkit-scrollbar { display: none; }
+
+.laporan-nav-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 0;
+}
+.laporan-nav-label {
+  font-weight: 700;
+  font-size: 0.9rem;
+  text-align: center;
+  flex: 1;
+}
+
+.stats-grid-laporan {
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+}
+.stat-card.danger {
+  border-left: 3px solid var(--danger, #dc3545);
+}
+.stat-card.danger .stat-value { color: var(--danger, #dc3545); }
+.stat-card.success {
+  border-left: 3px solid var(--success, #198754);
+}
+.stat-card.success .stat-value { color: var(--success, #198754); }
+
+.laporan-section {
+  background: var(--surface, #fff);
+  border-radius: 12px;
+  padding: 14px 16px;
+  border: 1px solid var(--border-color, #dee2e6);
+}
+.laporan-section-title {
+  font-weight: 700;
+  font-size: 0.9rem;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text, #212529);
+}
+
+/* Bar chart */
+.laporan-bar-chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  height: 120px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+.bar-chart-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 1;
+  min-width: 28px;
+  gap: 4px;
+}
+.bar-chart-val {
+  font-size: 0.6rem;
+  color: var(--text-muted, #6c757d);
+  white-space: nowrap;
+  text-align: center;
+  min-height: 14px;
+}
+.bar-chart-bar-wrap {
+  flex: 1;
+  width: 100%;
+  display: flex;
+  align-items: flex-end;
+}
+.bar-chart-bar {
+  width: 100%;
+  background: var(--primary, #0a7a5f);
+  border-radius: 4px 4px 0 0;
+  min-height: 3px;
+  transition: height 0.3s ease;
+}
+.bar-chart-bar.bar-empty { background: var(--border-color, #dee2e6); }
+.bar-chart-label {
+  font-size: 0.62rem;
+  color: var(--text-muted, #6c757d);
+  text-align: center;
+}
+
+/* Rekap produk */
+.recap-produk-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.recap-produk-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.recap-produk-rank {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--text-muted, #6c757d);
+  width: 18px;
+  text-align: center;
+  flex-shrink: 0;
+}
+.recap-produk-info { flex: 1; min-width: 0; }
+.recap-produk-name {
+  font-size: 0.82rem;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 3px;
+}
+.recap-produk-bar-wrap {
+  height: 5px;
+  background: var(--border-color, #dee2e6);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.recap-produk-bar {
+  height: 100%;
+  background: var(--primary, #0a7a5f);
+  border-radius: 999px;
+  transition: width 0.3s ease;
+}
+.recap-produk-stats {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  flex-shrink: 0;
+  gap: 1px;
+}
+.recap-produk-qty {
+  font-size: 0.7rem;
+  color: var(--text-muted, #6c757d);
+}
+.recap-produk-total {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--primary, #0a7a5f);
+}
+
+.laporan-export-row {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding-top: 4px;
+}
+
+/* Shift laporan */
+.laporan-shift-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 4px 0 8px;
+}
+.shift-laporan-card {
+  border-radius: 12px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.shift-active-card {
+  border: 2px solid var(--primary, #0a7a5f) !important;
+}
+.shift-laporan-header {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+}
+.shift-laporan-info { flex: 1; min-width: 0; }
+.shift-laporan-title {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+.shift-laporan-meta {
+  font-size: 0.8rem;
+  color: var(--text-muted, #6c757d);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-bottom: 3px;
+}
+.shift-laporan-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex-shrink: 0;
+  text-align: right;
+}
+.shift-stat {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: flex-end;
+  font-size: 0.78rem;
+}
+.shift-stat span { color: var(--text-muted, #6c757d); }
+.shift-stat strong { font-weight: 700; }
+.shift-laporan-top-produk {
+  border-top: 1px solid var(--border-color, #dee2e6);
+  padding-top: 10px;
+}
+
+/* ── SETTINGS — jam operasional (untuk settings.js existing) */
+.operasional-info {
+  font-size: 0.8rem;
+  color: var(--text-muted, #6c757d);
+  margin-top: 4px;
+}
+
+/* ============================================================
+   RESPONSIVE — Mobile Portrait & Landscape
+   ============================================================ */
+
+/* Mobile landscape & small screens */
+@media (max-width: 768px) {
+  .modifier-option-row {
+    grid-template-columns: 1fr 100px auto auto;
+    gap: 6px;
+  }
+  .form-row-equal {
+    grid-template-columns: 1fr;
+  }
+  .modifier-options-grid {
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  }
+  .stats-grid-laporan {
+    grid-template-columns: 1fr 1fr;
+  }
+  .shift-laporan-header {
+    flex-direction: column;
+    gap: 10px;
+  }
+  .shift-laporan-summary {
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    text-align: left;
+    gap: 6px 16px;
+  }
+  .shift-stat { justify-content: flex-start; }
+  .open-bill-list-actions {
+    flex-direction: column;
+  }
+  .laporan-bar-chart {
+    height: 100px;
+  }
+  .modal-wide {
+    width: 98vw;
+  }
+}
+
+/* Very small portrait (< 400px) */
+@media (max-width: 400px) {
+  .modifier-option-row {
+    grid-template-columns: 1fr 80px auto;
+  }
+  .modifier-default-label { font-size: 0.72rem; }
+  .stats-grid-laporan {
+    grid-template-columns: 1fr 1fr;
+  }
+  .recap-produk-stats { display: none; }
+}
+
+/* Landscape mobile */
+@media (max-height: 500px) and (orientation: landscape) {
+  .modal-wide {
+    max-height: 96vh;
+  }
+  .modifier-options-grid {
+    grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+  }
+  .laporan-bar-chart { height: 80px; }
+  .open-bill-list-body { max-height: 50vh; }
+}
+
+/* Desktop wide */
+@media (min-width: 1200px) {
+  .stats-grid-laporan {
+    grid-template-columns: repeat(6, 1fr);
+  }
+  .modifier-menu-link-grid {
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  }
+  .laporan-bar-chart { height: 150px; }
+}
