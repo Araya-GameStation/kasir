@@ -72,6 +72,14 @@ function renderSettingsTab() {
           <label class="form-label">Email</label>
           <input type="email" id="tokoEmail" class="form-input" value="${s.toko?.email || ''}">
         </div>
+        <div class="form-group">
+          <label class="form-label">Jam Buka Operasional</label>
+          <input type="time" id="jamBukaOps" class="form-input" value="${s.operasional?.jamBuka || '08:00'}">
+          <small class="text-muted operasional-info">
+            <i class="fas fa-info-circle"></i>
+            Dipakai untuk reset hari di Laporan.
+          </small>
+        </div>
         <button class="btn btn-primary" onclick="const b=this;Utils.setButtonLoading(b,true);saveTokoSettings().finally(()=>Utils.setButtonLoading(b,false))">
           <i class="fas fa-save"></i> Simpan
         </button>
@@ -316,20 +324,23 @@ function _saveSettingsScroll() {
 async function saveTokoSettings() {
   _saveSettingsScroll();
   try {
-    await dbCloud.collection("settings").doc("toko").update({
-      toko: {
-        nama: document.getElementById('tokoNama').value,
-        alamat: document.getElementById('tokoAlamat').value,
-        telepon: document.getElementById('tokoTelepon').value,
-        email: document.getElementById('tokoEmail').value
-      }
-    });
-    state.settings.toko = {
+    const tokoData = {
       nama: document.getElementById('tokoNama').value,
       alamat: document.getElementById('tokoAlamat').value,
       telepon: document.getElementById('tokoTelepon').value,
       email: document.getElementById('tokoEmail').value
     };
+    const jamBuka = document.getElementById('jamBukaOps')?.value || '08:00';
+
+    await dbCloud.collection("settings").doc("toko").update({
+      toko: tokoData,
+      operasional: { jamBuka }
+    });
+
+    state.settings.toko = tokoData;
+    if (!state.settings.operasional) state.settings.operasional = {};
+    state.settings.operasional.jamBuka = jamBuka;
+
     Utils.showToast("Pengaturan disimpan");
   } catch (error) {
     Utils.showToast("Gagal: " + error.message, 'error');

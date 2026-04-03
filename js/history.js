@@ -145,15 +145,27 @@ function showDetailModal(trxId) {
   if (!trx) return;
   const tgl = new Date(trx.date.seconds ? trx.date.seconds * 1000 : trx.date);
 
-  const itemsHTML = trx.items.map((item, index) => `
+  const itemsHTML = trx.items.map((item, index) => {
+    const unitPrice = item.price + (item.modifierTotal || 0);
+    const subtotal = item.subtotal || (unitPrice * item.qty);
+    const modHTML = (item.modifiers || []).length > 0
+      ? `<div class="history-item-modifiers">${item.modifiers.map(m =>
+          `<span class="cart-modifier-tag">${m.optionName}${m.price > 0 ? ` +${Utils.formatRupiah(m.price)}` : ''}</span>`
+        ).join('')}</div>`
+      : '';
+    const notesHTML = item.notes
+      ? `<div class="history-item-notes"><i class="fas fa-sticky-note"></i> ${item.notes}</div>`
+      : '';
+    return `
     <tr>
       <td>${index + 1}</td>
-      <td>${item.name}</td>
+      <td>${item.name}${modHTML}${notesHTML}</td>
       <td class="text-center">${item.qty}</td>
-      <td class="text-right">Rp ${Utils.formatRupiah(item.price)}</td>
-      <td class="text-right td-bold">Rp ${Utils.formatRupiah(item.price * item.qty)}</td>
+      <td class="text-right">Rp ${Utils.formatRupiah(unitPrice)}</td>
+      <td class="text-right td-bold">Rp ${Utils.formatRupiah(subtotal)}</td>
     </tr>
-  `).join('');
+  `;
+  }).join('');
 
   const modal = document.createElement('div');
   modal.className = 'modal-overlay';

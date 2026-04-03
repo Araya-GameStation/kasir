@@ -19,11 +19,13 @@ window.navigateTo = function(view) {
     if (_lastView === view) return;
     _lastView = view;
     state.currentView = view;
-    if (view === 'kasir')            window.renderKasir?.();
-    else if (view === 'history')     window.renderHistory?.();
-    else if (view === 'menuManager') window.renderMenuManager?.();
-    else if (view === 'bahanManager') window.renderBahanManager?.();
-    else if (view === 'settings')    window.renderSettings?.();
+    if (view === 'kasir')               window.renderKasir?.();
+    else if (view === 'history')        window.renderHistory?.();
+    else if (view === 'menuManager')    window.renderMenuManager?.();
+    else if (view === 'bahanManager')   window.renderBahanManager?.();
+    else if (view === 'modifierManager') window.renderModifierManager?.();
+    else if (view === 'laporan')        window.renderLaporan?.();
+    else if (view === 'settings')       window.renderSettings?.();
     setTimeout(() => window.triggerPageTransition(), 50);
 };
 
@@ -36,7 +38,8 @@ function createState(initialState) {
             const shouldRender = [
                 'currentView', 'cart', 'selectedCategory', 'selectedTable',
                 'selectedPaymentMethod', 'cashAmount', 'qrisAmount',
-                'transactions', 'selectedHistory', 'selectedMenus'
+                'transactions', 'selectedHistory', 'selectedMenus',
+                'modifierGroups', 'openBills'
             ].includes(property);
 
             if (!_isRendering && shouldRender) {
@@ -60,12 +63,14 @@ let state = createState({
     selectedCategory: "ALL",
     selectedMenus: new Set(),
     transactions: [],
+    allTransactions: [],
     expandedHistory: null,
     selectedHistory: new Set(),
     currentView: "kasir",
     currentCategoryId: null,
     currentSession: null,
     sessions: [],
+    allSessions: [],
     rawMaterials: [],
     stockMutations: [],
     tables: [],
@@ -77,7 +82,10 @@ let state = createState({
     cashAmount: 0,
     qrisAmount: 0,
     lastCategoryScroll: 0,
-    lastMenuScroll: 0
+    lastMenuScroll: 0,
+    lastCartScroll: 0,
+    modifierGroups: [],
+    openBills: []
 });
 
 window.app = app;
@@ -110,6 +118,10 @@ window.safeRender = function () {
                 window.openCategory(state.currentCategoryId);
             } else if (state.currentView === "bahanManager" && typeof window.renderBahanManager === 'function') {
                 window.renderBahanManager();
+            } else if (state.currentView === "modifierManager" && typeof window.renderModifierManager === 'function') {
+                window.renderModifierManager();
+            } else if (state.currentView === "laporan" && typeof window.renderLaporan === 'function') {
+                window.renderLaporan();
             } else if (state.currentView === "settings" && typeof window.renderSettings === 'function') {
                 window.renderSettings();
             }

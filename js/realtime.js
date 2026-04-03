@@ -33,6 +33,7 @@ function startRealtimeTransactions() {
             state.transactions = [];
         }
         if (state.currentView === "history") renderHistory();
+        if (state.currentView === "laporan") window.renderLaporan?.();
     });
     addListener(unsubscribe);
 }
@@ -77,6 +78,63 @@ function startRealtimeTables() {
     addListener(unsubscribe);
 }
 
+function startRealtimePengeluaran() {
+    const unsubscribe = dbCloud.collection("pengeluaran")
+        .orderBy("createdAt", "desc")
+        .onSnapshot(snap => {
+            state.pengeluaran = [];
+            snap.forEach(doc => state.pengeluaran.push({ id: doc.id, ...doc.data() }));
+            if (state.currentView === "history") renderHistory();
+            if (state.currentView === "laporan") window.renderLaporan?.();
+            if (document.getElementById('modal-pengeluaran')) {
+                window.refreshListPengeluaran?.();
+            }
+        });
+    addListener(unsubscribe);
+}
+
+function startRealtimeModifierGroups() {
+    const unsubscribe = dbCloud.collection("modifierGroups").onSnapshot(snap => {
+        state.modifierGroups = [];
+        snap.forEach(doc => state.modifierGroups.push({ id: doc.id, ...doc.data() }));
+        if (state.currentView === "modifierManager") renderModifierManager();
+    });
+    addListener(unsubscribe);
+}
+
+function startRealtimeOpenBills() {
+    const unsubscribe = dbCloud.collection("openBills")
+        .where("status", "==", "open")
+        .onSnapshot(snap => {
+            state.openBills = [];
+            snap.forEach(doc => state.openBills.push({ id: doc.id, ...doc.data() }));
+            safeRender();
+            _refreshOpenBillBadges();
+        });
+    addListener(unsubscribe);
+}
+
+function startRealtimeSessions() {
+    const unsubscribe = dbCloud.collection("sessions")
+        .orderBy("waktuBuka", "desc")
+        .limit(90)
+        .onSnapshot(snap => {
+            state.allSessions = [];
+            snap.forEach(doc => state.allSessions.push({ id: doc.id, ...doc.data() }));
+            if (state.currentView === "laporan") window.renderLaporan?.();
+        });
+    addListener(unsubscribe);
+}
+
+function _refreshOpenBillBadges() {
+    const count = (state.openBills || []).length;
+    const badge = document.getElementById('open-bill-badge');
+    if (badge) {
+        badge.textContent = count > 0 ? count : '';
+        badge.style.display = count > 0 ? 'inline-flex' : 'none';
+    }
+}
+
 function checkLowStockAlert() {
     const lowStock = state.rawMaterials.filter(m => m.stock <= (m.minStock || 5));
     if (lowStock.length > 0 && state.currentView !== 'bahanManager') {
@@ -105,25 +163,8 @@ async function updateAllProductStocks() {
         }
     }
     if (updatedCount > 0) {
-        try {
-            await batch.commit();
-        } catch (error) {
-        }
+        try { await batch.commit(); } catch (error) {}
     }
-}
-
-function startRealtimePengeluaran() {
-    const unsubscribe = dbCloud.collection("pengeluaran")
-        .orderBy("createdAt", "desc")
-        .onSnapshot(snap => {
-            state.pengeluaran = [];
-            snap.forEach(doc => state.pengeluaran.push({ id: doc.id, ...doc.data() }));
-            if (state.currentView === "history") renderHistory();
-            if (document.getElementById('modal-pengeluaran')) {
-                window.refreshListPengeluaran?.();
-            }
-        });
-    addListener(unsubscribe);
 }
 
 window.startRealtimeCategories = startRealtimeCategories;
@@ -132,5 +173,8 @@ window.startRealtimeTransactions = startRealtimeTransactions;
 window.startRealtimeRawMaterials = startRealtimeRawMaterials;
 window.startRealtimeStockMutations = startRealtimeStockMutations;
 window.startRealtimeTables = startRealtimeTables;
-window.updateAllProductStocks = updateAllProductStocks;
 window.startRealtimePengeluaran = startRealtimePengeluaran;
+window.startRealtimeModifierGroups = startRealtimeModifierGroups;
+window.startRealtimeOpenBills = startRealtimeOpenBills;
+window.startRealtimeSessions = startRealtimeSessions;
+window.updateAllProductStocks = updateAllProductStocks;

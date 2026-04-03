@@ -118,13 +118,23 @@ async function printStruk(trx) {
         bytes.push(...encoder.encode("================================\n"));
         trx.items.forEach(i => {
             bytes.push(...encoder.encode(i.name + "\n"));
-            const qtyPrice = i.qty + " x " + Utils.formatRupiah(i.price);
-            const totalPrice = Utils.formatRupiah(i.price * i.qty);
+            if (i.modifiers && i.modifiers.length > 0) {
+                i.modifiers.forEach(m => {
+                    const modLabel = "  + " + m.optionName + (m.price > 0 ? " +" + Utils.formatRupiah(m.price) : "");
+                    bytes.push(...encoder.encode(modLabel + "\n"));
+                });
+            }
+            if (i.notes) {
+                bytes.push(...encoder.encode("  * " + i.notes + "\n"));
+            }
+            const unitPrice = i.price + (i.modifierTotal || 0);
+            const qtyPrice = i.qty + " x " + Utils.formatRupiah(unitPrice);
+            const totalPrice = Utils.formatRupiah(unitPrice * i.qty);
             const itemSpacing = 32 - qtyPrice.length - totalPrice.length;
             const itemLine = qtyPrice + " ".repeat(Math.max(0, itemSpacing)) + totalPrice;
             bytes.push(...encoder.encode(itemLine + "\n"));
             if (window.state?.settings?.struk?.showHargaSatuan) {
-                bytes.push(...encoder.encode("  @" + Utils.formatRupiah(i.price) + "\n"));
+                bytes.push(...encoder.encode("  @" + Utils.formatRupiah(unitPrice) + "\n"));
             }
         });
         bytes.push(...encoder.encode("================================\n"));

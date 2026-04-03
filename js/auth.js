@@ -11,6 +11,9 @@ firebase.auth().onAuthStateChanged(async function (user) {
         startRealtimeStockMutations();
         startRealtimeTables();
         startRealtimePengeluaran();
+        startRealtimeModifierGroups();
+        startRealtimeOpenBills();
+        startRealtimeSessions();
         renderKasir();
     }
 });
@@ -24,7 +27,7 @@ function renderLogin() {
         <input id="email" type="email" class="login-input" placeholder="Email" autocomplete="email">
         <input id="password" type="password" class="login-input" placeholder="Password" autocomplete="current-password">
         <button class="btn-login" id="btn-login" onclick="const b=this;Utils.setButtonLoading(b,true);login(b)">MASUK</button>
-        <p class="brand-footer">VERSI 2.0.0</p>
+        <p class="brand-footer">VERSI 3.0.0</p>
       </div>
     </div>
   `;
@@ -70,13 +73,13 @@ async function loadSettings() {
             const defaultSettings = {
                 toko: { nama: "GARIS WAKTU", alamat: "JL A YANI KM 14,8", telepon: "085147520182" },
                 struk: { header: "TERIMA KASIH", footer: ["IG: @arayagamestation"], showMeja: true },
-                meja: { aktif: true }
+                meja: { aktif: true },
+                operasional: { jamBuka: "08:00" }
             };
             await dbCloud.collection("settings").doc("toko").set(defaultSettings);
             state.settings = defaultSettings;
         }
-    } catch (error) {
-    }
+    } catch (error) {}
 }
 
 async function loadTables() {
@@ -85,8 +88,7 @@ async function loadTables() {
         const allDocs = [];
         snapshot.forEach(doc => allDocs.push({ id: doc.id, ...doc.data() }));
         state.tables = allDocs;
-    } catch (error) {
-    }
+    } catch (error) {}
 }
 
 async function checkActiveSession() {
@@ -109,8 +111,7 @@ async function checkActiveSession() {
             state.currentSession = { id: doc.id, ...doc.data() };
             localStorage.setItem("activeSession", JSON.stringify(state.currentSession));
         }
-    } catch (error) {
-    }
+    } catch (error) {}
 }
 
 function getShiftWaktu() {
@@ -129,7 +130,7 @@ async function bukaShift() {
         window._selectedKasirs = new Set();
         let kasirHtml = kasirAktif.map(k => `
             <label class="auth-checkbox-group">
-                <input type="checkbox" class="auth-checkbox-input" value="${k.nama}" 
+                <input type="checkbox" class="auth-checkbox-input" value="${k.nama}"
                        onchange="if(this.checked) window._selectedKasirs.add(this.value); else window._selectedKasirs.delete(this.value);">
                 <span class="text-bold-md text-lg">${k.nama}</span>
             </label>
@@ -193,15 +194,22 @@ async function bukaShift() {
 
 async function tutupShift() {
     if (!state.currentSession) return;
+
+    const openBillsSesi = (state.openBills || []).filter(ob => ob.sessionId === state.currentSession.id);
+    if (openBillsSesi.length > 0) {
+        Utils.showToast(`Masih ada ${openBillsSesi.length} open bill yang belum dibayar!`, 'warning');
+        return;
+    }
+
     const transaksiSesi = state.transactions.filter(t => t.sessionId === state.currentSession.id);
     const totalPenjualan = transaksiSesi.reduce((sum, t) => sum + t.total, 0);
     const totalCash = transaksiSesi.reduce((sum, t) => sum + (t.cashAmount || (t.metodeBayar === 'tunai' ? t.total : 0)), 0);
     const totalQRIS = transaksiSesi.reduce((sum, t) => sum + (t.qrisAmount || (t.metodeBayar === 'qris' ? t.total : 0)), 0);
-    const pengeluaranSesi = state.pengeluaran?.filter(p =>
-        p.sessionId === state.currentSession.id) || [];
+    const pengeluaranSesi = state.pengeluaran?.filter(p => p.sessionId === state.currentSession.id) || [];
     const totalPengeluaran = pengeluaranSesi.reduce((sum, p) => sum + (p.nominal || 0), 0);
     const kasBersih = totalCash - totalPengeluaran;
     const uangDiLaci = state.currentSession.modalAwal + totalCash;
+
     const result = await Utils.showModal({
         title: `Rekap Shift ${state.currentSession.shift}`,
         content: `
@@ -223,6 +231,7 @@ async function tutupShift() {
             { text: 'Tutup Shift', action: 'close', class: 'btn-primary' }
         ]
     });
+
     if (result === 'print') {
         if (typeof window.printRekapSesi === 'function') {
             await window.printRekapSesi(state.currentSession, transaksiSesi);
@@ -230,6 +239,7 @@ async function tutupShift() {
         return;
     }
     if (result !== 'close') return;
+
     const rekap = {
         waktuTutup: new Date(),
         totalPenjualan, totalCash, totalQRIS,
