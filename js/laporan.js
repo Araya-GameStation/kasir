@@ -279,7 +279,7 @@ function _buildDetailHTML(mode, isoKey) {
   const { trxList, pengeluaranList, mutationList } = _getPeriodData(mode, isoKey);
   const { total, cash, qris } = _sumTrx(trxList);
   const totalPengeluaran = pengeluaranList.reduce((s, p) => s + (p.nominal || 0), 0);
-  const kasBersih = total - totalPengeluaran;
+  const cashBersih = total - totalPengeluaran;
 
   const recap = {};
   trxList.forEach(t => (t.items || []).forEach(i => {
@@ -307,7 +307,7 @@ function _buildDetailHTML(mode, isoKey) {
           <div class="detail-stat qris"><span>QRIS</span><strong>Rp ${Utils.formatRupiah(qris)}</strong></div>
           ${totalPengeluaran > 0 ? `
             <div class="detail-stat danger"><span>Pengeluaran</span><strong>-Rp ${Utils.formatRupiah(totalPengeluaran)}</strong></div>
-            <div class="detail-stat success"><span>Kas Bersih</span><strong>Rp ${Utils.formatRupiah(kasBersih)}</strong></div>
+            <div class="detail-stat success"><span>Cash Bersih</span><strong>Rp ${Utils.formatRupiah(cashBersih)}</strong></div>
           ` : ''}
         </div>
       </div>
@@ -442,7 +442,7 @@ window._exportLaporanPDF = async function(mode, isoKey) {
     const { trxList, pengeluaranList, mutationList, label } = _getPeriodData(mode, isoKey);
     const { total, cash, qris } = _sumTrx(trxList);
     const totalPengeluaran = pengeluaranList.reduce((s, p) => s + (p.nominal || 0), 0);
-    const kasBersih = total - totalPengeluaran;
+    const cashBersih = total - totalPengeluaran;
 
     const recap = {};
     trxList.forEach(t => (t.items || []).forEach(i => {
@@ -511,7 +511,7 @@ window._exportLaporanPDF = async function(mode, isoKey) {
     ];
     if (totalPengeluaran > 0) {
       cards.push({ label: 'Pengeluaran', value: 'Rp ' + Utils.formatRupiah(totalPengeluaran), accent: RED });
-      cards.push({ label: 'Kas Bersih',  value: 'Rp ' + Utils.formatRupiah(kasBersih),        accent: GREEN });
+      cards.push({ label: 'Cash Bersih',  value: 'Rp ' + Utils.formatRupiah(cashBersih),        accent: GREEN });
     }
 
     const nCols = cards.length <= 3 ? 3 : 4;
