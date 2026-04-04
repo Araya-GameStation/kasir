@@ -281,58 +281,92 @@ function toggleSelectAll() {
 
 async function deleteSelected() {
   if (state.selectedHistory.size === 0) return;
-  if (!await Utils.showConfirm(`Hapus ${state.selectedHistory.size} transaksi? Data stok bahan dan produk akan dikembalikan.`)) return;
+
+  const activeSessionId = state.currentSession?.id;
+  if (!activeSessionId) {
+    Utils.showToast('Tidak ada shift aktif. Transaksi tidak dapat dihapus.', 'warning');
+    return;
+  }
+
+  const allSelected = [...state.selectedHistory]
+    .map(id => state.transactions.find(t => t.id === id))
+    .filter(Boolean);
+
+  const fromOtherShift = allSelected.filter(t => t.sessionId !== activeSessionId);
+  const fromActiveShift = allSelected.filter(t => t.sessionId === activeSessionId);
+
+  if (fromOtherShift.length > 0 && fromActiveShift.length === 0) {
+    Utils.showToast('Transaksi dari shift yang sudah selesai tidak dapat dihapus.', 'warning');
+    return;
+  }
+
+  if (fromOtherShift.length > 0) {
+    const ok = await Swal.fire({
+      title: 'Perhatian',
+      html: `${fromOtherShift.length} transaksi dari shift lama tidak dapat dihapus.<br>
+        Hanya <b>${fromActiveShift.length} transaksi</b> dari shift aktif yang akan dihapus & di-rollback.`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Lanjutkan',
+      cancelButtonText: 'Batal'
+    });
+    if (!ok.isConfirmed) return;
+  } else {
+    if (!await Utils.showConfirm(
+      `Hapus ${fromActiveShift.length} transaksi?\nStok bahan & produk akan dikembalikan.`
+    )) return;
+  }
 
   const mainContent = document.querySelector('main');
-  if (mainContent) {
-    lastHistoryScrollPosition = mainContent.scrollTop;
-  }
+  if (mainContent) lastHistoryScrollPosition = mainContent.scrollTop;
 
   try {
     const batch = dbCloud.batch();
-    const transactionsToDelete = [...state.selectedHistory].map(id => state.transactions.find(t => t.id === id)).filter(Boolean);
 
-    for (const trx of transactionsToDelete) {
+    for (const trx of fromActiveShift) {
       if (!trx.items) continue;
-
       for (const item of trx.items) {
-        if (item.useStock) {
-          batch.update(dbCloud.collection("menus").doc(item.id), {
+        const produk = state.menus.find(m => m.id === item.id);
+        if (!produk) continue;
+
+        if (produk.useStock) {
+          batch.update(dbCloud.collection('menus').doc(item.id), {
             stock: firebase.firestore.FieldValue.increment(item.qty)
           });
         }
 
-        if (item.resep) {
-          for (const bahan of item.resep) {
-            batch.update(dbCloud.collection("raw_materials").doc(bahan.bahanId), {
+        if (produk.resep && produk.resep.length > 0) {
+          for (const bahan of produk.resep) {
+            batch.update(dbCloud.collection('raw_materials').doc(bahan.bahanId), {
               stock: firebase.firestore.FieldValue.increment(bahan.qty * item.qty)
-            });
-
-            batch.set(dbCloud.collection("stock_mutations").doc(), {
-              type: "in",
-              source: "history_deleted",
-              bahanId: bahan.bahanId,
-              namaBahan: bahan.nama,
-              qty: bahan.qty * item.qty,
-              satuan: bahan.satuan || 'pcs',
-              produkId: item.id,
-              namaProduk: item.name,
-              transactionId: trx.id,
-              userId: state.user?.email || 'unknown',
-              createdAt: new Date()
             });
           }
         }
       }
-      batch.delete(dbCloud.collection("transactions").doc(trx.id));
+      batch.delete(dbCloud.collection('transactions').doc(trx.id));
     }
 
     await batch.commit();
+
+    const trxIds = new Set(fromActiveShift.map(t => t.id));
+    const mutasiIds = (state.stockMutations || [])
+      .filter(m => m.source === 'sale' && trxIds.has(m.transactionId))
+      .map(m => m.id);
+    if (mutasiIds.length > 0) {
+      const bMutasi = dbCloud.batch();
+      mutasiIds.forEach(id => bMutasi.delete(dbCloud.collection('stock_mutations').doc(id)));
+      await bMutasi.commit();
+    }
+
+    if (typeof window.updateAllProductStocks === 'function') {
+      await window.updateAllProductStocks();
+    }
+
     state.selectedHistory.clear();
-    Utils.showToast(`${transactionsToDelete.length} transaksi dihapus & stok dikembalikan`, "success");
+    Utils.showToast(`${fromActiveShift.length} transaksi dihapus & stok dikembalikan`, 'success');
     renderHistory();
   } catch (error) {
-    Utils.showToast("Gagal: " + error.message, 'error');
+    Utils.showToast('Gagal: ' + error.message, 'error');
   }
 }
 

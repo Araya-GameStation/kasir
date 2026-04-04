@@ -739,106 +739,150 @@ function downloadTemplateExcel() {
 }
 
 async function resetRiwayatOnly() {
-  if (!await Utils.showConfirm("RESET RIWAYAT?\n\nTransaksi & sesi akan dihapus.\nKategori, Menu, Bahan tetap aman.")) return;
+  const result = await Swal.fire({
+    title: 'Reset Riwayat?',
+    html: `
+      <div style="text-align:left;font-size:0.85rem">
+        <p style="margin-bottom:8px">Yang akan <b>dihapus</b>:</p>
+        <ul style="margin:0 0 10px 16px;color:#dc3545">
+          <li>Seluruh transaksi (semua shift)</li>
+          <li>Seluruh sesi / shift</li>
+          <li>Seluruh pengeluaran</li>
+          <li>Seluruh open bill</li>
+          <li>Riwayat mutasi stok</li>
+        </ul>
+        <p style="margin-bottom:8px">Yang <b>tetap aman</b>:</p>
+        <ul style="margin:0 0 10px 16px;color:#16a34a">
+          <li>Produk & kategori menu</li>
+          <li>Bahan baku & stok</li>
+          <li>List meja</li>
+          <li>Modifier group</li>
+          <li>Pengaturan & struk</li>
+        </ul>
+        <p style="color:#dc3545;font-weight:600">
+          <i class="fas fa-exclamation-triangle"></i>
+          Stok bahan TIDAK akan di-rollback (anggap sudah terpakai secara fisik)
+        </p>
+      </div>`,
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonText: 'Lanjutkan',
+    cancelButtonText: 'Batal',
+    confirmButtonColor: '#f59e0b'
+  });
+  if (!result.isConfirmed) return;
+
   const konfirmasi = await Utils.showPrompt("Ketik 'RESET' untuk konfirmasi");
   if (konfirmasi !== "RESET") {
     Utils.showToast("Reset dibatalkan", 'warning');
     return;
   }
+
   Utils.showToast("⏳ Menghapus riwayat...", 'warning');
+
+  const _batchDelete = async (collName) => {
+    const snap = await dbCloud.collection(collName).get();
+    if (snap.empty) return;
+    for (let i = 0; i < snap.docs.length; i += 400) {
+      const b = dbCloud.batch();
+      snap.docs.slice(i, i + 400).forEach(d => b.delete(d.ref));
+      await b.commit();
+    }
+  };
+
   try {
-    const trans = await dbCloud.collection("transactions").get();
-    if (trans.size > 0) {
-      const batchTrans = dbCloud.batch();
-      trans.docs.forEach(doc => batchTrans.delete(doc.ref));
-      await batchTrans.commit();
-    }
-    const sesi = await dbCloud.collection("sessions").get();
-    if (sesi.size > 0) {
-      const batchSesi = dbCloud.batch();
-      sesi.docs.forEach(doc => batchSesi.delete(doc.ref));
-      await batchSesi.commit();
-    }
-    const mutasi = await dbCloud.collection("stock_mutations").get();
-    if (mutasi.size > 0) {
-      const batchMutasi = dbCloud.batch();
-      mutasi.docs.forEach(doc => batchMutasi.delete(doc.ref));
-      await batchMutasi.commit();
-    }
-    const pengeluaran = await dbCloud.collection("pengeluaran").get();
-    if (pengeluaran.size > 0) {
-      const batchPengeluaran = dbCloud.batch();
-      pengeluaran.docs.forEach(doc => batchPengeluaran.delete(doc.ref));
-      await batchPengeluaran.commit();
-    }
+    await _batchDelete('transactions');
+    await _batchDelete('sessions');
+    await _batchDelete('stock_mutations');
+    await _batchDelete('pengeluaran');
+    await _batchDelete('openBills');
+
     state.transactions = [];
     state.allTransactions = [];
     state.sessions = [];
+    state.allSessions = [];
     state.pengeluaran = [];
+    state.openBills = [];
+    state.stockMutations = [];
     state.currentSession = null;
     state.cart = [];
     state.selectedTable = null;
     state.cashAmount = 0;
     state.qrisAmount = 0;
+    window._currentOpenBillId = null;
     localStorage.removeItem("activeSession");
     localStorage.removeItem("lastLowStockAlert");
+
     Utils.showToast("Riwayat berhasil direset!");
-    setTimeout(() => {
-      renderKasir();
-    }, 1500);
+    setTimeout(() => renderKasir(), 1000);
   } catch (error) {
     Utils.showToast("Gagal reset: " + error.message, 'error');
   }
 }
 
 async function resetData() {
-  if (!await Utils.showConfirm("RESET TOTAL DATABASE\n\nSEMUA data akan hilang!\nLanjutkan?")) return;
+  const result = await Swal.fire({
+    title: 'Reset Total Database?',
+    html: `
+      <div style="text-align:left;font-size:0.85rem">
+        <p style="color:#dc3545;font-weight:700;margin-bottom:8px">
+          <i class="fas fa-skull-crossbones"></i> SEMUA data akan dihapus permanen!
+        </p>
+        <ul style="margin:0 0 10px 16px;color:#dc3545">
+          <li>Transaksi & sesi</li>
+          <li>Produk & kategori menu</li>
+          <li>Bahan baku & stok</li>
+          <li>Modifier group</li>
+          <li>List meja</li>
+          <li>Pengeluaran & open bill</li>
+          <li>Riwayat mutasi stok</li>
+          <li>Pengaturan toko & struk</li>
+        </ul>
+        <p style="color:#6c757d;font-size:0.8rem">Akun login tidak akan terhapus</p>
+      </div>`,
+    icon: 'error',
+    showCancelButton: true,
+    confirmButtonText: 'Lanjutkan',
+    cancelButtonText: 'Batal',
+    confirmButtonColor: '#dc3545'
+  });
+  if (!result.isConfirmed) return;
+
   const konfirmasi = await Utils.showPrompt("Ketik 'RESET TOTAL' untuk konfirmasi");
   if (konfirmasi !== "RESET TOTAL") {
     Utils.showToast("Reset dibatalkan", 'warning');
     return;
   }
+
   Utils.showToast("⏳ Menghapus SEMUA data...", 'warning');
+
+  const _batchDelete = async (collName) => {
+    const snap = await dbCloud.collection(collName).get();
+    if (snap.empty) return;
+    for (let i = 0; i < snap.docs.length; i += 400) {
+      const b = dbCloud.batch();
+      snap.docs.slice(i, i + 400).forEach(d => b.delete(d.ref));
+      await b.commit();
+    }
+  };
+
   try {
-    const trans = await dbCloud.collection("transactions").get();
-    const batch1 = dbCloud.batch();
-    trans.docs.forEach(d => batch1.delete(d.ref));
-    await batch1.commit();
-    const sesi = await dbCloud.collection("sessions").get();
-    const batch2 = dbCloud.batch();
-    sesi.docs.forEach(d => batch2.delete(d.ref));
-    await batch2.commit();
-    const menus = await dbCloud.collection("menus").get();
-    const batch3 = dbCloud.batch();
-    menus.docs.forEach(d => batch3.delete(d.ref));
-    await batch3.commit();
-    const kategori = await dbCloud.collection("categories").get();
-    const batch4 = dbCloud.batch();
-    kategori.docs.forEach(d => batch4.delete(d.ref));
-    await batch4.commit();
-    const bahan = await dbCloud.collection("raw_materials").get();
-    const batch5 = dbCloud.batch();
-    bahan.docs.forEach(d => batch5.delete(d.ref));
-    await batch5.commit();
-    const mutasi = await dbCloud.collection("stock_mutations").get();
-    const batch6 = dbCloud.batch();
-    mutasi.docs.forEach(d => batch6.delete(d.ref));
-    await batch6.commit();
-    const tables = await dbCloud.collection("tables").get();
-    const batch7 = dbCloud.batch();
-    tables.docs.forEach(d => batch7.delete(d.ref));
-    await batch7.commit();
-    const settings = await dbCloud.collection("settings").get();
-    const batch8 = dbCloud.batch();
-    settings.docs.forEach(d => batch8.delete(d.ref));
-    await batch8.commit();
-    const pengeluaranAll = await dbCloud.collection("pengeluaran").get();
-    const batch9 = dbCloud.batch();
-    pengeluaranAll.docs.forEach(d => batch9.delete(d.ref));
-    await batch9.commit();
+    await _batchDelete('transactions');
+    await _batchDelete('sessions');
+    await _batchDelete('menus');
+    await _batchDelete('categories');
+    await _batchDelete('raw_materials');
+    await _batchDelete('stock_mutations');
+    await _batchDelete('tables');
+    await _batchDelete('settings');
+    await _batchDelete('pengeluaran');
+    await _batchDelete('openBills');
+    await _batchDelete('modifierGroups');
+
     state.transactions = [];
     state.allTransactions = [];
     state.sessions = [];
+    state.allSessions = [];
     state.menus = [];
     state.categories = [];
     state.rawMaterials = [];
@@ -846,14 +890,16 @@ async function resetData() {
     state.tables = [];
     state.settings = null;
     state.pengeluaran = [];
+    state.openBills = [];
+    state.modifierGroups = [];
     state.currentSession = null;
     state.cart = [];
     state.selectedTable = null;
+    window._currentOpenBillId = null;
     localStorage.clear();
+
     Utils.showToast("DATABASE berhasil direset!");
-    setTimeout(() => {
-      window.location.reload();
-    }, 2000);
+    setTimeout(() => window.location.reload(), 2000);
   } catch (error) {
     Utils.showToast("Gagal reset total: " + error.message, 'error');
   }

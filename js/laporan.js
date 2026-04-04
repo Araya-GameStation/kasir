@@ -405,19 +405,14 @@ window._hapusLaporanPeriode = async function(mode, isoKey) {
   const { trxList, label } = _getPeriodData(mode, isoKey);
   if (trxList.length === 0) { Utils.showToast('Tidak ada data untuk dihapus', 'warning'); return; }
 
-  const activeSessionId = state.currentSession?.id;
-  const isActiveShift = trxList.some(t => t.sessionId === activeSessionId);
-
   const result = await Swal.fire({
     title: 'Hapus Data Laporan?',
     html: `<b>${label}</b><br><br>
       ${trxList.length} transaksi akan dihapus permanen.<br>
-      ${isActiveShift
-        ? `<span style="color:#16a34a;font-weight:600">
-            <i class="fas fa-undo"></i> Stok bahan akan di-rollback otomatis
-           </span>`
-        : `<small style="color:#6c757d">Stok bahan tidak akan dikembalikan (shift sudah selesai)</small>`
-      }`,
+      <small style="color:#6c757d">
+        <i class="fas fa-info-circle"></i>
+        Stok bahan tidak diubah. Gunakan fitur ini untuk membersihkan data Firebase lama.
+      </small>`,
     icon: 'warning',
     showCancelButton: true,
     confirmButtonText: 'Ya, Hapus',
@@ -427,61 +422,29 @@ window._hapusLaporanPeriode = async function(mode, isoKey) {
   if (!result.isConfirmed) return;
 
   try {
-    if (isActiveShift) {
-      const trxAktif = trxList.filter(t => t.sessionId === activeSessionId);
-      for (const trx of trxAktif) {
-        const batchStock = dbCloud.batch();
-        let hasChanges = false;
-        for (const item of (trx.items || [])) {
-          const produk = state.menus.find(m => m.id === item.id);
-          if (!produk) continue;
-          if (produk.useStock) {
-            batchStock.update(dbCloud.collection('menus').doc(item.id), {
-              stock: firebase.firestore.FieldValue.increment(item.qty)
-            });
-            hasChanges = true;
-          }
-          if (produk.resep && produk.resep.length > 0) {
-            for (const bahan of produk.resep) {
-              batchStock.update(dbCloud.collection('raw_materials').doc(bahan.bahanId), {
-                stock: firebase.firestore.FieldValue.increment(bahan.qty * item.qty)
-              });
-              hasChanges = true;
-            }
-          }
-        }
-        if (hasChanges) await batchStock.commit();
-      }
-      const mutasiIds = (state.stockMutations || [])
-        .filter(m => m.source === 'sale' && trxAktif.some(t => t.id === m.transactionId))
-        .map(m => m.id);
-      for (let i = 0; i < mutasiIds.length; i += 400) {
-        const b = dbCloud.batch();
-        mutasiIds.slice(i, i + 400).forEach(id =>
-          b.delete(dbCloud.collection('stock_mutations').doc(id))
-        );
-        await b.commit();
-      }
-      if (typeof window.updateAllProductStocks === 'function') {
-        await window.updateAllProductStocks();
-      }
-    }
+    Utils.showToast('⏳ Menghapus data...', 'warning');
 
-    const ids = trxList.map(t => t.id);
-    for (let i = 0; i < ids.length; i += 400) {
+    const trxIds = [...trxList.map(t => t.id)];
+    for (let i = 0; i < trxIds.length; i += 400) {
       const batch = dbCloud.batch();
-      ids.slice(i, i + 400).forEach(id =>
+      trxIds.slice(i, i + 400).forEach(id =>
         batch.delete(dbCloud.collection('transactions').doc(id))
       );
       await batch.commit();
     }
 
-    Utils.showToast(
-      isActiveShift
-        ? `${trxList.length} transaksi dihapus, stok di-rollback`
-        : `${trxList.length} transaksi dihapus`,
-      'success'
-    );
+    const mutasiIds = (state.stockMutations || [])
+      .filter(m => m.source === 'sale' && new Set(trxIds).has(m.transactionId))
+      .map(m => m.id);
+    for (let i = 0; i < mutasiIds.length; i += 400) {
+      const b = dbCloud.batch();
+      mutasiIds.slice(i, i + 400).forEach(id =>
+        b.delete(dbCloud.collection('stock_mutations').doc(id))
+      );
+      await b.commit();
+    }
+
+    Utils.showToast(`${trxList.length} transaksi dihapus`, 'success');
     _refreshLaporanContent();
   } catch (err) {
     Utils.showToast('Gagal hapus: ' + err.message, 'error');
