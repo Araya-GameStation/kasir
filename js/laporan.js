@@ -405,10 +405,19 @@ window._hapusLaporanPeriode = async function(mode, isoKey) {
   const { trxList, label } = _getPeriodData(mode, isoKey);
   if (trxList.length === 0) { Utils.showToast('Tidak ada data untuk dihapus', 'warning'); return; }
 
+  const activeSessionId = state.currentSession?.id;
+  const isActiveShift = trxList.some(t => t.sessionId === activeSessionId);
+
   const result = await Swal.fire({
     title: 'Hapus Data Laporan?',
-    html: `<b>${label}</b><br><br>${trxList.length} transaksi akan dihapus permanen.<br>
-      <small class="text-muted">Stok bahan tidak akan dikembalikan.</small>`,
+    html: `<b>${label}</b><br><br>
+      ${trxList.length} transaksi akan dihapus permanen.<br>
+      ${isActiveShift
+        ? `<span style="color:#16a34a;font-weight:600">
+            <i class="fas fa-undo"></i> Stok bahan akan di-rollback otomatis
+           </span>`
+        : `<small style="color:#6c757d">Stok bahan tidak akan dikembalikan (shift sudah selesai)</small>`
+      }`,
     icon: 'warning',
     showCancelButton: true,
     confirmButtonText: 'Ya, Hapus',
@@ -418,6 +427,46 @@ window._hapusLaporanPeriode = async function(mode, isoKey) {
   if (!result.isConfirmed) return;
 
   try {
+    if (isActiveShift) {
+      const trxAktif = trxList.filter(t => t.sessionId === activeSessionId);
+      for (const trx of trxAktif) {
+        const batchStock = dbCloud.batch();
+        let hasChanges = false;
+        for (const item of (trx.items || [])) {
+          const produk = state.menus.find(m => m.id === item.id);
+          if (!produk) continue;
+          if (produk.useStock) {
+            batchStock.update(dbCloud.collection('menus').doc(item.id), {
+              stock: firebase.firestore.FieldValue.increment(item.qty)
+            });
+            hasChanges = true;
+          }
+          if (produk.resep && produk.resep.length > 0) {
+            for (const bahan of produk.resep) {
+              batchStock.update(dbCloud.collection('raw_materials').doc(bahan.bahanId), {
+                stock: firebase.firestore.FieldValue.increment(bahan.qty * item.qty)
+              });
+              hasChanges = true;
+            }
+          }
+        }
+        if (hasChanges) await batchStock.commit();
+      }
+      const mutasiIds = (state.stockMutations || [])
+        .filter(m => m.source === 'sale' && trxAktif.some(t => t.id === m.transactionId))
+        .map(m => m.id);
+      for (let i = 0; i < mutasiIds.length; i += 400) {
+        const b = dbCloud.batch();
+        mutasiIds.slice(i, i + 400).forEach(id =>
+          b.delete(dbCloud.collection('stock_mutations').doc(id))
+        );
+        await b.commit();
+      }
+      if (typeof window.updateAllProductStocks === 'function') {
+        await window.updateAllProductStocks();
+      }
+    }
+
     const ids = trxList.map(t => t.id);
     for (let i = 0; i < ids.length; i += 400) {
       const batch = dbCloud.batch();
@@ -426,7 +475,13 @@ window._hapusLaporanPeriode = async function(mode, isoKey) {
       );
       await batch.commit();
     }
-    Utils.showToast(`${trxList.length} transaksi dihapus`, 'success');
+
+    Utils.showToast(
+      isActiveShift
+        ? `${trxList.length} transaksi dihapus, stok di-rollback`
+        : `${trxList.length} transaksi dihapus`,
+      'success'
+    );
     _refreshLaporanContent();
   } catch (err) {
     Utils.showToast('Gagal hapus: ' + err.message, 'error');
@@ -560,7 +615,7 @@ window._exportLaporanPDF = async function(mode, isoKey) {
     };
 
     const tblBase = {
-      margin: { left: ML, right: MR },
+      margin: { left: ML, right: MR, bottom: 14 },
       styles: {
         fontSize: 7.5,
         cellPadding: { top: 1.8, bottom: 1.8, left: 3, right: 3 },
@@ -582,9 +637,9 @@ window._exportLaporanPDF = async function(mode, isoKey) {
     };
 
     const recapRows = Object.entries(recap)
-      .sort(function(a, b) { return b[1].total - a[1].total; })
-      .map(function(entry, idx) {
-        return [String(idx + 1), entry[0], entry[1].qty + ' pcs', 'Rp ' + Utils.formatRupiah(entry[1].total)];
+      .sort(function(a, b) { return b[1].qty - a[1].qty; })
+      .map(function(entry) {
+        return [entry[0], entry[1].qty + ' pcs', 'Rp ' + Utils.formatRupiah(entry[1].total)];
       });
 
     if (recapRows.length > 0) {
@@ -592,16 +647,15 @@ window._exportLaporanPDF = async function(mode, isoKey) {
       doc.autoTable({
         ...tblBase,
         startY: y,
-        head: [['#', 'Nama Produk', 'Terjual', 'Total']],
+        head: [['Nama Produk', 'Terjual', 'Total']],
         body: recapRows,
         columnStyles: {
-          0: { cellWidth: 8,  halign: 'center', textColor: GRAY },
-          1: { cellWidth: 'auto' },
-          2: { cellWidth: 26, halign: 'center' },
-          3: { cellWidth: 40, halign: 'right' },
+          0: { cellWidth: 'auto' },
+          1: { cellWidth: 26, halign: 'center' },
+          2: { cellWidth: 40, halign: 'right' },
         },
         didParseCell: function(d) {
-          if (d.section === 'body' && d.row.index === 0 && d.column.index !== 0) {
+          if (d.section === 'body' && d.row.index === 0) {
             d.cell.styles.fontStyle = 'bold';
           }
         },
@@ -618,14 +672,8 @@ window._exportLaporanPDF = async function(mode, isoKey) {
         body: pengeluaranList.map(function(p) {
           return [p.nama, 'Rp ' + Utils.formatRupiah(p.nominal)];
         }),
-        foot: [['Total Pengeluaran', 'Rp ' + Utils.formatRupiah(totalPengeluaran)]],
         headStyles: { ...tblBase.headStyles, fillColor: RED },
         alternateRowStyles: { fillColor: RED_LT },
-        footStyles: {
-          fontStyle: 'bold', textColor: WHITE,
-          fillColor: RED,
-          cellPadding: { top: 2, bottom: 2, left: 3, right: 3 },
-        },
         columnStyles: {
           0: { cellWidth: 'auto' },
           1: { cellWidth: 48, halign: 'right' },
