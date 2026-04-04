@@ -1,9 +1,3 @@
-/* ============================================================
-   STYLE UPGRADE — Modifier, Open Bill, Laporan
-   Semua class baru, tidak override style.css lama
-   ============================================================ */
-
-/* ── BADGE SYSTEM ─────────────────────────────────────────── */
 .badge {
   display: inline-flex;
   align-items: center;
@@ -22,7 +16,6 @@
 .badge-warning  { background: var(--warning, #ffc107); color: #212529; }
 .ml-1           { margin-left: 4px; }
 
-/* ── MODAL WIDE ───────────────────────────────────────────── */
 .modal-wide {
   width: min(96vw, 560px);
   max-height: 90vh;
@@ -59,7 +52,6 @@
   gap: 12px;
 }
 
-/* ── MODIFIER MANAGER ─────────────────────────────────────── */
 .modifier-group-list {
   display: flex;
   flex-direction: column;
@@ -123,7 +115,6 @@
   border-top: 1px solid var(--border-color, #dee2e6);
 }
 
-/* Modifier editor */
 .modifier-options-editor {
   display: flex;
   flex-direction: column;
@@ -154,7 +145,6 @@
   padding: 4px;
 }
 
-/* ── MODIFIER SELECT MODAL ───────────────────────────────── */
 .modifier-group-section {
   padding: 12px 0;
   border-bottom: 1px solid var(--border-color, #dee2e6);
@@ -203,7 +193,6 @@
 }
 .modifier-opt-btn.selected .modifier-opt-price { color: var(--primary, #0a7a5f); }
 
-/* ── CART ITEM UPGRADE ───────────────────────────────────── */
 .cart-item {
   display: flex;
   gap: 10px;
@@ -267,7 +256,6 @@
   font-size: 0.65rem;
 }
 
-/* ── MEJA — OPEN BILL STATE ──────────────────────────────── */
 .table-btn-occupied {
   border: 2px solid var(--warning, #ffc107) !important;
   background: color-mix(in srgb, var(--warning, #ffc107) 8%, var(--surface, #fff));
@@ -280,7 +268,6 @@
   margin-top: 3px;
 }
 
-/* ── OPEN BILL LIST MODAL ────────────────────────────────── */
 .open-bill-list-body {
   display: flex;
   flex-direction: column;
@@ -333,7 +320,6 @@
   gap: 6px;
 }
 
-/* ── LAPORAN ─────────────────────────────────────────────── */
 .laporan-tab-bar {
   display: flex;
   gap: 6px;
@@ -385,7 +371,6 @@
   color: var(--text, #212529);
 }
 
-/* Bar chart */
 .laporan-bar-chart {
   display: flex;
   align-items: flex-end;
@@ -429,7 +414,6 @@
   text-align: center;
 }
 
-/* Rekap produk */
 .recap-produk-list {
   display: flex;
   flex-direction: column;
@@ -493,7 +477,6 @@
   padding-top: 4px;
 }
 
-/* Shift laporan */
 .laporan-shift-pagination {
   display: flex;
   align-items: center;
@@ -553,14 +536,12 @@
   padding-top: 10px;
 }
 
-/* ── SETTINGS — jam operasional (untuk settings.js existing) */
 .operasional-info {
   font-size: 0.8rem;
   color: var(--text-muted, #6c757d);
   margin-top: 4px;
 }
 
-/* ── LAPORAN ROW LIST ─────────────────────────────────────── */
 .laporan-list-header {
   display: grid;
   grid-template-columns: 1fr 70px 90px 100px;
@@ -629,7 +610,6 @@
   flex-wrap: wrap;
 }
 
-/* ── LAPORAN DETAIL MODAL ─────────────────────────────────── */
 .modal-header-actions {
   display: flex;
   align-items: center;
@@ -711,7 +691,6 @@
 }
 .detail-bahan-row:last-child { border-bottom: none; }
 
-/* ── RIWAYAT STOK ─────────────────────────────────────────── */
 .riwayat-stok-body {
   display: flex;
   flex-direction: column;
@@ -756,7 +735,6 @@
   white-space: nowrap;
 }
 
-/* ── HISTORY ITEM MODIFIERS (from audit fix) ──────────────── */
 .history-item-modifiers {
   display: flex;
   flex-wrap: wrap;
@@ -770,11 +748,6 @@
   font-style: italic;
 }
 
-/* ============================================================
-   RESPONSIVE — Mobile Portrait & Landscape
-   ============================================================ */
-
-/* Mobile landscape & small screens */
 @media (max-width: 768px) {
   .modifier-option-row {
     grid-template-columns: 1fr 100px auto auto;
@@ -819,7 +792,6 @@
   .detail-stats-grid { grid-template-columns: 1fr 1fr; }
 }
 
-/* Very small portrait (< 400px) */
 @media (max-width: 400px) {
   .modifier-option-row {
     grid-template-columns: 1fr 80px auto;
@@ -837,7 +809,6 @@
   .laporan-row-trx { display: none; }
 }
 
-/* Landscape mobile */
 @media (max-height: 500px) and (orientation: landscape) {
   .modal-wide {
     max-height: 96vh;
@@ -849,7 +820,6 @@
   .open-bill-list-body { max-height: 50vh; }
 }
 
-/* Desktop wide */
 @media (min-width: 1200px) {
   .stats-grid-laporan {
     grid-template-columns: repeat(6, 1fr);
