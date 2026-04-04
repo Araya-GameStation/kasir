@@ -437,6 +437,7 @@ window._exportLaporanPDF = async function(mode, isoKey) {
   try {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+
     const toko = state.settings?.toko || {};
     const { trxList, pengeluaranList, mutationList, label } = _getPeriodData(mode, isoKey);
     const { total, cash, qris } = _sumTrx(trxList);
@@ -450,101 +451,246 @@ window._exportLaporanPDF = async function(mode, isoKey) {
       recap[i.name].total += i.subtotal || ((i.price + (i.modifierTotal || 0)) * i.qty);
     }));
 
-    const bahanUsage = {};
-    mutationList.forEach(m => {
-      if (!bahanUsage[m.namaBahan]) bahanUsage[m.namaBahan] = { qty: 0, satuan: m.satuan || '' };
-      bahanUsage[m.namaBahan].qty += m.qty;
-    });
+    const lowStockBahan = (state.rawMaterials || [])
+      .filter(b => b.stock <= (b.minStock || 5))
+      .sort((a, b) => a.stock - b.stock);
 
-    const C1 = 15, C2 = 195;
-    let y = 15;
-    const hr = () => { doc.line(C1, y, C2, y); y += 4; };
+    const GREEN    = [10, 122, 95];
+    const GREEN_DK = [7, 89, 69];
+    const GREEN_LT = [241, 250, 246];
+    const DARK     = [15, 23, 42];
+    const GRAY     = [100, 116, 139];
+    const LGRAY    = [248, 250, 252];
+    const BORDER   = [226, 232, 240];
+    const WHITE    = [255, 255, 255];
+    const RED      = [220, 38, 38];
+    const RED_LT   = [254, 242, 242];
+    const ORANGE   = [234, 88, 12];
+    const BLUE_AC  = [59, 130, 246];
+    const TEAL_AC  = [16, 185, 129];
 
-    doc.setFontSize(14); doc.setFont(undefined, 'bold');
-    doc.text(toko.nama || 'GARIS WAKTU', 105, y, { align: 'center' }); y += 7;
-    doc.setFontSize(8); doc.setFont(undefined, 'normal');
-    if (toko.alamat) { doc.text(toko.alamat, 105, y, { align: 'center' }); y += 4; }
-    if (toko.telepon) { doc.text(toko.telepon, 105, y, { align: 'center' }); y += 4; }
-    y += 2; hr();
-
+    const ML = 12, MR = 12, PW = 210 - ML - MR;
     const modeLabel = { harian:'Harian', mingguan:'Mingguan', bulanan:'Bulanan', shift:'Per Shift' }[mode] || mode;
-    doc.setFontSize(11); doc.setFont(undefined, 'bold');
-    doc.text(`Laporan ${modeLabel}`, 105, y, { align: 'center' }); y += 5;
-    doc.setFontSize(8); doc.setFont(undefined, 'normal');
-    doc.text(label, 105, y, { align: 'center' }); y += 4;
-    doc.text(`Dicetak: ${new Date().toLocaleString('id-ID')}`, 105, y, { align: 'center' }); y += 5;
-    hr();
 
-    doc.setFontSize(10); doc.setFont(undefined, 'bold');
-    doc.text('RINGKASAN PENJUALAN', C1, y); y += 5;
-    doc.setFontSize(8);
-    const sRows = [
-      ['Total Penjualan', `Rp ${Utils.formatRupiah(total)}`],
-      ['Total Transaksi', `${trxList.length}x`],
-      ['CASH', `Rp ${Utils.formatRupiah(cash)}`],
-      ['QRIS', `Rp ${Utils.formatRupiah(qris)}`],
-      ...(totalPengeluaran > 0 ? [
-        ['Pengeluaran', `-Rp ${Utils.formatRupiah(totalPengeluaran)}`],
-        ['Kas Bersih', `Rp ${Utils.formatRupiah(kasBersih)}`]
-      ] : [])
+    doc.setFillColor(...GREEN);
+    doc.rect(0, 0, 210, 32, 'F');
+    doc.setFillColor(...GREEN_DK);
+    doc.rect(0, 32, 210, 2, 'F');
+
+    doc.setTextColor(...WHITE);
+    doc.setFontSize(17);
+    doc.setFont(undefined, 'bold');
+    doc.text('LAPORAN ' + modeLabel.toUpperCase(), 105, 12, { align: 'center' });
+
+    doc.setFontSize(8.5);
+    doc.setFont(undefined, 'normal');
+    doc.setTextColor(180, 230, 210);
+    doc.text(toko.nama || 'GARIS WAKTU', 105, 20, { align: 'center' });
+
+    doc.setFontSize(7.5);
+    doc.setTextColor(160, 215, 195);
+    doc.text(label, 105, 27, { align: 'center' });
+
+    let y = 39;
+
+    doc.setFillColor(...LGRAY);
+    doc.setDrawColor(...BORDER);
+    doc.setLineWidth(0.15);
+    doc.rect(ML, y, PW, 7, 'FD');
+    doc.setTextColor(...GRAY);
+    doc.setFontSize(7);
+    doc.setFont(undefined, 'normal');
+    doc.text('Dicetak: ' + new Date().toLocaleString('id-ID'), ML + 3.5, y + 4.5);
+    doc.text(trxList.length + ' Transaksi', 210 - MR - 3.5, y + 4.5, { align: 'right' });
+    y += 11;
+
+    const cards = [
+      { label: 'Total Penjualan', value: 'Rp ' + Utils.formatRupiah(total), accent: GREEN },
+      { label: 'CASH',            value: 'Rp ' + Utils.formatRupiah(cash),  accent: TEAL_AC },
+      { label: 'QRIS',            value: 'Rp ' + Utils.formatRupiah(qris),  accent: BLUE_AC },
     ];
-    sRows.forEach(([k, v]) => {
-      doc.setFont(undefined, 'normal'); doc.text(k, C1 + 3, y);
-      doc.setFont(undefined, k === 'Kas Bersih' ? 'bold' : 'normal');
-      doc.text(v, C2, y, { align: 'right' }); y += 5;
-    });
-    y += 2;
+    if (totalPengeluaran > 0) {
+      cards.push({ label: 'Pengeluaran', value: 'Rp ' + Utils.formatRupiah(totalPengeluaran), accent: RED });
+      cards.push({ label: 'Kas Bersih',  value: 'Rp ' + Utils.formatRupiah(kasBersih),        accent: GREEN });
+    }
 
-    const recapRows = Object.entries(recap).sort((a,b) => b[1].total - a[1].total)
-      .map(([n, d]) => [n, String(d.qty), `Rp ${Utils.formatRupiah(d.total)}`]);
-    if (recapRows.length > 0) {
-      doc.autoTable({
-        startY: y,
-        head: [['Produk', 'Qty', 'Total']],
-        body: recapRows,
-        margin: { left: C1, right: 15 },
-        styles: { fontSize: 8 },
-        headStyles: { fillColor: [10, 122, 95] },
-        columnStyles: { 1: { cellWidth: 20, halign: 'center' }, 2: { cellWidth: 40, halign: 'right' } }
+    const nCols = cards.length <= 3 ? 3 : 4;
+    const gap = 3.5;
+    const cW = (PW - (nCols - 1) * gap) / nCols;
+    const cH = 17;
+
+    cards.forEach(function(card, i) {
+      const col = i % nCols;
+      const row = Math.floor(i / nCols);
+      const cx = ML + col * (cW + gap);
+      const cy = y + row * (cH + gap);
+
+      doc.setFillColor(...WHITE);
+      doc.setDrawColor(...BORDER);
+      doc.setLineWidth(0.2);
+      doc.roundedRect(cx, cy, cW, cH, 1.5, 1.5, 'FD');
+
+      doc.setFillColor(...card.accent);
+      doc.roundedRect(cx, cy, cW, 3, 1.5, 1.5, 'F');
+      doc.rect(cx, cy + 1.5, cW, 1.5, 'F');
+
+      doc.setFontSize(6.5);
+      doc.setFont(undefined, 'normal');
+      doc.setTextColor(...GRAY);
+      doc.text(card.label, cx + cW / 2, cy + 7.5, { align: 'center' });
+
+      doc.setFontSize(7.5);
+      doc.setFont(undefined, 'bold');
+      doc.setTextColor(...DARK);
+      doc.text(card.value, cx + cW / 2, cy + 13.5, { align: 'center', maxWidth: cW - 3 });
+    });
+
+    const nRows = Math.ceil(cards.length / nCols);
+    y += nRows * (cH + gap) + 3;
+
+    const section = function(title, color) {
+      if (y > 250) { doc.addPage(); y = 15; }
+      doc.setFillColor(...color);
+      doc.rect(ML, y, 3, 5.5, 'F');
+      doc.setFontSize(9);
+      doc.setFont(undefined, 'bold');
+      doc.setTextColor(...DARK);
+      doc.text(title, ML + 5.5, y + 4);
+      y += 8;
+    };
+
+    const tblBase = {
+      margin: { left: ML, right: MR },
+      styles: {
+        fontSize: 7.5,
+        cellPadding: { top: 1.8, bottom: 1.8, left: 3, right: 3 },
+        lineColor: BORDER,
+        lineWidth: 0.15,
+        overflow: 'linebreak',
+        minCellHeight: 5.5,
+        textColor: DARK,
+      },
+      headStyles: {
+        fontStyle: 'bold',
+        textColor: WHITE,
+        fontSize: 7.5,
+        fillColor: GREEN,
+        cellPadding: { top: 2.2, bottom: 2.2, left: 3, right: 3 },
+        minCellHeight: 7,
+      },
+      alternateRowStyles: { fillColor: GREEN_LT },
+    };
+
+    const recapRows = Object.entries(recap)
+      .sort(function(a, b) { return b[1].total - a[1].total; })
+      .map(function(entry, idx) {
+        return [String(idx + 1), entry[0], entry[1].qty + ' pcs', 'Rp ' + Utils.formatRupiah(entry[1].total)];
       });
-      y = doc.lastAutoTable.finalY + 5;
+
+    if (recapRows.length > 0) {
+      section('PRODUK TERJUAL', GREEN);
+      doc.autoTable({
+        ...tblBase,
+        startY: y,
+        head: [['#', 'Nama Produk', 'Terjual', 'Total']],
+        body: recapRows,
+        columnStyles: {
+          0: { cellWidth: 8,  halign: 'center', textColor: GRAY },
+          1: { cellWidth: 'auto' },
+          2: { cellWidth: 26, halign: 'center' },
+          3: { cellWidth: 40, halign: 'right' },
+        },
+        didParseCell: function(d) {
+          if (d.section === 'body' && d.row.index === 0 && d.column.index !== 0) {
+            d.cell.styles.fontStyle = 'bold';
+          }
+        },
+      });
+      y = doc.lastAutoTable.finalY + 8;
     }
 
     if (pengeluaranList.length > 0) {
-      hr();
-      doc.setFontSize(10); doc.setFont(undefined, 'bold');
-      doc.text('PENGELUARAN', C1, y); y += 5;
+      section('PENGELUARAN', RED);
       doc.autoTable({
+        ...tblBase,
         startY: y,
         head: [['Keterangan', 'Nominal']],
-        body: pengeluaranList.map(p => [p.nama, `Rp ${Utils.formatRupiah(p.nominal)}`]),
-        foot: [['Total', `Rp ${Utils.formatRupiah(totalPengeluaran)}`]],
-        margin: { left: C1, right: 15 },
-        styles: { fontSize: 8 },
-        headStyles: { fillColor: [220, 53, 69] },
-        footStyles: { fontStyle: 'bold' },
-        columnStyles: { 1: { halign: 'right' } }
+        body: pengeluaranList.map(function(p) {
+          return [p.nama, 'Rp ' + Utils.formatRupiah(p.nominal)];
+        }),
+        foot: [['Total Pengeluaran', 'Rp ' + Utils.formatRupiah(totalPengeluaran)]],
+        headStyles: { ...tblBase.headStyles, fillColor: RED },
+        alternateRowStyles: { fillColor: RED_LT },
+        footStyles: {
+          fontStyle: 'bold', textColor: WHITE,
+          fillColor: RED,
+          cellPadding: { top: 2, bottom: 2, left: 3, right: 3 },
+        },
+        columnStyles: {
+          0: { cellWidth: 'auto' },
+          1: { cellWidth: 48, halign: 'right' },
+        },
       });
-      y = doc.lastAutoTable.finalY + 5;
+      y = doc.lastAutoTable.finalY + 8;
     }
 
-    if (Object.keys(bahanUsage).length > 0) {
-      hr();
-      doc.setFontSize(10); doc.setFont(undefined, 'bold');
-      doc.text('PEMAKAIAN STOK BAHAN', C1, y); y += 5;
+    if (lowStockBahan.length > 0) {
+      section('BAHAN STOK MENIPIS', ORANGE);
       doc.autoTable({
+        ...tblBase,
         startY: y,
-        head: [['Bahan', 'Pemakaian']],
-        body: Object.entries(bahanUsage).sort((a,b) => b[1].qty - a[1].qty)
-          .map(([n, d]) => [n, `${d.qty} ${d.satuan}`]),
-        margin: { left: C1, right: 15 },
-        styles: { fontSize: 8 },
-        headStyles: { fillColor: [13, 110, 253] },
-        columnStyles: { 1: { halign: 'right' } }
+        head: [['Nama Bahan', 'Stok', 'Min. Stok', 'Satuan', 'Status']],
+        body: lowStockBahan.map(function(b) {
+          return [
+            b.name,
+            String(b.stock ?? 0),
+            String(b.minStock || 5),
+            b.satuan || 'pcs',
+            b.stock <= 0 ? 'Habis' : 'Menipis',
+          ];
+        }),
+        headStyles: { ...tblBase.headStyles, fillColor: ORANGE },
+        alternateRowStyles: { fillColor: [255, 247, 237] },
+        columnStyles: {
+          0: { cellWidth: 'auto' },
+          1: { cellWidth: 22, halign: 'center' },
+          2: { cellWidth: 26, halign: 'center' },
+          3: { cellWidth: 22, halign: 'center' },
+          4: { cellWidth: 26, halign: 'center' },
+        },
+        didParseCell: function(d) {
+          if (d.section !== 'body') return;
+          if (d.column.index === 4) {
+            d.cell.styles.fontStyle = 'bold';
+            d.cell.styles.textColor = d.cell.raw === 'Habis' ? RED : ORANGE;
+          }
+          if (d.column.index === 1 && parseFloat(d.cell.raw) <= 0) {
+            d.cell.styles.textColor = RED;
+            d.cell.styles.fontStyle = 'bold';
+          }
+        },
       });
     }
 
-    doc.save(`laporan-${mode}-${label.replace(/[^a-z0-9]/gi,'_').substring(0,40)}.pdf`);
+    const pageCount = doc.getNumberOfPages();
+    for (let i = 1; i <= pageCount; i++) {
+      doc.setPage(i);
+      const pH = doc.internal.pageSize.height;
+      doc.setFillColor(...GREEN);
+      doc.rect(0, pH - 9, 210, 9, 'F');
+      doc.setTextColor(...WHITE);
+      doc.setFontSize(6.5);
+      doc.setFont(undefined, 'normal');
+      doc.text(toko.nama || 'GARIS WAKTU', ML, pH - 3.2);
+      doc.setFont(undefined, 'bold');
+      doc.text(i + ' / ' + pageCount, 105, pH - 3.2, { align: 'center' });
+      doc.setFont(undefined, 'normal');
+      doc.setTextColor(180, 230, 210);
+      doc.text(new Date().toLocaleDateString('id-ID'), 210 - MR, pH - 3.2, { align: 'right' });
+    }
+
+    const safeLabel = label.replace(/[^a-z0-9]/gi, '_').substring(0, 40);
+    doc.save('laporan-' + mode + '-' + safeLabel + '.pdf');
     Utils.showToast('PDF berhasil diunduh', 'success');
   } catch (err) {
     Utils.showToast('Gagal export PDF: ' + err.message, 'error');
