@@ -279,7 +279,7 @@ function _buildDetailHTML(mode, isoKey) {
   const { trxList, pengeluaranList, mutationList } = _getPeriodData(mode, isoKey);
   const { total, cash, qris } = _sumTrx(trxList);
   const totalPengeluaran = pengeluaranList.reduce((s, p) => s + (p.nominal || 0), 0);
-  const cashBersih = total - totalPengeluaran;
+  const cashBersih = cash - totalPengeluaran;
 
   const recap = {};
   trxList.forEach(t => (t.items || []).forEach(i => {
@@ -460,7 +460,7 @@ window._exportLaporanPDF = async function(mode, isoKey) {
     const { trxList, pengeluaranList, mutationList, label } = _getPeriodData(mode, isoKey);
     const { total, cash, qris } = _sumTrx(trxList);
     const totalPengeluaran = pengeluaranList.reduce((s, p) => s + (p.nominal || 0), 0);
-    const cashBersih = total - totalPengeluaran;
+    const cashBersih = cash - totalPengeluaran;
 
     const recap = {};
     trxList.forEach(t => (t.items || []).forEach(i => {
