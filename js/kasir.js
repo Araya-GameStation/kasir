@@ -381,7 +381,8 @@ async function _showModifierModal(item, modGroups, stokTersedia) {
           groupName: s.groupName,
           optionId: s.id,
           optionName: s.name,
-          price: s.price || 0
+          price: s.price || 0,
+          resep: s.resep || []
         })),
         notes: ''
       };
@@ -588,6 +589,16 @@ async function bayar() {
         }
       }
       if (produk.useStock && produk.stock < item.qty) throw new Error(`Stok ${produk.name} tidak cukup`);
+
+      for (const mod of (item.modifiers || [])) {
+        if (!mod.resep || mod.resep.length === 0) continue;
+        for (const bahan of mod.resep) {
+          const bahanData = state.rawMaterials.find(b => b.id === bahan.bahanId);
+          if (!bahanData || bahanData.stock < (bahan.qty * item.qty)) {
+            throw new Error(`Stok ${bahan.namaBahan} tidak cukup untuk modifier "${mod.optionName}"`);
+          }
+        }
+      }
     }
 
     const trxData = {
@@ -635,6 +646,22 @@ async function bayar() {
             bahanId: bahan.bahanId, namaBahan: bahan.nama,
             qty: bahan.qty * item.qty, satuan: bahan.satuan || 'pcs',
             produkId: item.id, namaProduk: produk.name,
+            transactionId: trxId, userId: state.user.email, createdAt: new Date()
+          });
+        }
+      }
+      for (const mod of (item.modifiers || [])) {
+        if (!mod.resep || mod.resep.length === 0) continue;
+        for (const bahan of mod.resep) {
+          batch.update(dbCloud.collection("raw_materials").doc(bahan.bahanId), {
+            stock: firebase.firestore.FieldValue.increment(-(bahan.qty * item.qty))
+          });
+          batch.set(dbCloud.collection("stock_mutations").doc(), {
+            type: "out", source: "sale",
+            bahanId: bahan.bahanId, namaBahan: bahan.namaBahan,
+            qty: bahan.qty * item.qty, satuan: bahan.satuan || 'pcs',
+            produkId: item.id, namaProduk: produk.name,
+            modifierId: mod.optionId, namaModifier: mod.optionName,
             transactionId: trxId, userId: state.user.email, createdAt: new Date()
           });
         }

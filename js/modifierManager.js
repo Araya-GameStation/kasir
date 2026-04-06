@@ -65,6 +65,11 @@ function _renderGroupCard(group) {
             <span class="modifier-option-price-chip">
               ${opt.price > 0 ? `+Rp ${Utils.formatRupiah(opt.price)}` : 'Gratis'}
             </span>
+            ${(opt.resep && opt.resep.length > 0) ? `
+              <span class="badge badge-info" title="Punya resep bahan">
+                <i class="fas fa-flask"></i> ${opt.resep.length} bahan
+              </span>
+            ` : ''}
           </div>
         `).join('')}
       </div>
@@ -96,45 +101,121 @@ function _buildModalShell(id, title, bodyHtml) {
   return modal;
 }
 
-function _optionRowHtml(idx, opt = {}) {
+function _getBahanOptions(selectedId = '') {
+  const bahans = (state.rawMaterials || []).sort((a, b) => a.name.localeCompare(b.name));
+  if (bahans.length === 0) return '<option value="">Belum ada bahan</option>';
+  return `<option value="">Pilih Bahan</option>` +
+    bahans.map(b =>
+      `<option value="${b.id}" data-satuan="${b.satuan || 'pcs'}" ${b.id === selectedId ? 'selected' : ''}>${b.name} (${b.satuan || 'pcs'})</option>`
+    ).join('');
+}
+
+function _resepRowHtml(optIdx, resepIdx, resepItem = {}) {
+  const rowId = `resep-${optIdx}-${resepIdx}`;
   return `
-    <div class="modifier-option-row" data-id="${opt.id || ''}" id="opt-row-${idx}">
-      <input type="text" class="form-input opt-name" placeholder="Nama opsi" value="${opt.name || ''}">
-      <input type="number" class="form-input opt-price" placeholder="Harga tambah" value="${opt.price || 0}" min="0">
-      <label class="modifier-default-label">
-        <input type="checkbox" class="opt-default" ${opt.isDefault ? 'checked' : ''}> Default
-      </label>
-      <button class="btn-icon-sm btn-icon-danger" onclick="document.getElementById('opt-row-${idx}').remove()">
-        <i class="fas fa-times"></i>
+    <div class="recipe-row" id="${rowId}">
+      <select class="recipe-select opt-resep-bahan" data-opt="${optIdx}" data-idx="${resepIdx}"
+        onchange="window._onModResepBahanChange('${optIdx}','${resepIdx}')">
+        ${_getBahanOptions(resepItem.bahanId || '')}
+      </select>
+      <input type="number" class="recipe-input opt-resep-qty" data-opt="${optIdx}" data-idx="${resepIdx}"
+        placeholder="Jumlah" min="0.01" step="0.01" value="${resepItem.qty || 1}">
+      <span class="recipe-unit opt-resep-satuan" id="satuan-${optIdx}-${resepIdx}">
+        ${resepItem.satuan || 'pcs'}
+      </span>
+      <button type="button" class="recipe-remove" onclick="document.getElementById('${rowId}').remove()">×</button>
+    </div>
+  `;
+}
+
+function _resepSectionHtml(optIdx, resep = []) {
+  const rows = resep.length > 0
+    ? resep.map((r, i) => _resepRowHtml(optIdx, i, r)).join('')
+    : _resepRowHtml(optIdx, 0);
+  return `
+    <div class="opt-resep-section" id="resep-section-${optIdx}">
+      <div class="opt-resep-header">
+        <small class="text-muted"><i class="fas fa-flask"></i> Resep Bahan (opsional)</small>
+      </div>
+      <div class="recipe-container" id="resep-container-${optIdx}">
+        ${rows}
+      </div>
+      <button type="button" class="recipe-add" onclick="window._addModResepRow('${optIdx}')">
+        <i class="fas fa-plus"></i> Tambah Bahan
       </button>
     </div>
   `;
 }
 
-function _menuChecklistHtml(checkedIds = [], cssClass = 'mg-menu-check') {
-  const menus = (state.menus || []).sort((a, b) => a.name.localeCompare(b.name));
-  if (menus.length === 0) return '<small class="text-muted">Belum ada menu</small>';
+window._onModResepBahanChange = function(optIdx, resepIdx) {
+  const sel = document.querySelector(`.opt-resep-bahan[data-opt="${optIdx}"][data-idx="${resepIdx}"]`);
+  const satuanEl = document.getElementById(`satuan-${optIdx}-${resepIdx}`);
+  if (sel && satuanEl) {
+    const opt = sel.options[sel.selectedIndex];
+    satuanEl.textContent = opt?.dataset?.satuan || 'pcs';
+  }
+};
+
+window._addModResepRow = function(optIdx) {
+  const container = document.getElementById(`resep-container-${optIdx}`);
+  if (!container) return;
+  const idx = container.children.length;
+  const div = document.createElement('div');
+  div.innerHTML = _resepRowHtml(optIdx, idx);
+  container.appendChild(div.firstElementChild);
+};
+
+function _optionRowHtml(idx, opt = {}) {
   return `
-    <div class="modifier-menu-link-grid">
-      ${menus.map(m => `
-        <label class="checkbox-label">
-          <input type="checkbox" class="${cssClass}" value="${m.id}" ${checkedIds.includes(m.id) ? 'checked' : ''}>
-          ${m.name}
+    <div class="modifier-option-row-wrap" data-id="${opt.id || ''}" id="opt-row-${idx}">
+      <div class="modifier-option-row">
+        <input type="text" class="form-input opt-name" placeholder="Nama opsi" value="${opt.name || ''}">
+        <input type="number" class="form-input opt-price" placeholder="Harga tambah" value="${opt.price || 0}" min="0">
+        <label class="modifier-default-label">
+          <input type="checkbox" class="opt-default" ${opt.isDefault ? 'checked' : ''}> Default
         </label>
-      `).join('')}
+        <button class="btn-icon-sm btn-icon-danger" onclick="document.getElementById('opt-row-${idx}').remove()">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      ${_resepSectionHtml(idx, opt.resep || [])}
     </div>
   `;
 }
 
+function _collectResep(optIdx) {
+  const container = document.getElementById(`resep-container-${optIdx}`);
+  if (!container) return [];
+  const resep = [];
+  container.querySelectorAll('.recipe-row').forEach(row => {
+    const bahanSel = row.querySelector('.opt-resep-bahan');
+    const qtyInput = row.querySelector('.opt-resep-qty');
+    const satuanEl = row.querySelector('.opt-resep-satuan');
+    const bahanId = bahanSel?.value;
+    const qty = parseFloat(qtyInput?.value) || 0;
+    if (bahanId && qty > 0) {
+      const bahan = (state.rawMaterials || []).find(b => b.id === bahanId);
+      resep.push({
+        bahanId,
+        namaBahan: bahan?.name || '',
+        qty,
+        satuan: satuanEl?.textContent?.trim() || bahan?.satuan || 'pcs'
+      });
+    }
+  });
+  return resep;
+}
+
 function _collectOptions(containerSelector) {
-  const rows = document.querySelectorAll(`${containerSelector} .modifier-option-row`);
+  const rows = document.querySelectorAll(`${containerSelector} .modifier-option-row-wrap`);
   const options = [];
-  rows.forEach(row => {
+  rows.forEach((row, idx) => {
     const name = row.querySelector('.opt-name')?.value?.trim();
     const price = parseInt(row.querySelector('.opt-price')?.value) || 0;
     const isDefault = row.querySelector('.opt-default')?.checked || false;
     const id = row.dataset.id || _genId();
-    if (name) options.push({ id, name, price, isDefault });
+    const resep = _collectResep(idx);
+    if (name) options.push({ id, name, price, isDefault, resep });
   });
   return options;
 }
@@ -163,6 +244,21 @@ async function _syncMenuLinks(groupId, newMenuIds, oldMenuIds = []) {
     batch.update(dbCloud.collection('menus').doc(menuId), { modifierGroupIds: existing });
   });
   await batch.commit();
+}
+
+function _menuChecklistHtml(checkedIds = [], cssClass = 'mg-menu-check') {
+  const menus = (state.menus || []).sort((a, b) => a.name.localeCompare(b.name));
+  if (menus.length === 0) return '<small class="text-muted">Belum ada menu</small>';
+  return `
+    <div class="modifier-menu-link-grid">
+      ${menus.map(m => `
+        <label class="checkbox-label">
+          <input type="checkbox" class="${cssClass}" value="${m.id}" ${checkedIds.includes(m.id) ? 'checked' : ''}>
+          ${m.name}
+        </label>
+      `).join('')}
+    </div>
+  `;
 }
 
 function showAddModifierGroupModal() {
@@ -211,8 +307,9 @@ function showAddModifierGroupModal() {
 window._addOptRow = function() {
   const container = document.getElementById('mg-opts');
   if (!container) return;
+  const idx = _optRowIdx++;
   const div = document.createElement('div');
-  div.innerHTML = _optionRowHtml(_optRowIdx++);
+  div.innerHTML = _optionRowHtml(idx);
   container.appendChild(div.firstElementChild);
 };
 
@@ -226,11 +323,9 @@ async function saveNewModifierGroup() {
   const linkedIds = [...document.querySelectorAll('.mg-menu-check:checked')].map(c => c.value);
 
   const ref = await dbCloud.collection('modifierGroups').add({
-    name: nama,
-    required,
+    name: nama, required,
     minSelect: required ? 1 : 0,
-    maxSelect,
-    options,
+    maxSelect, options,
     createdAt: new Date()
   });
 
@@ -290,8 +385,9 @@ async function editModifierGroup(id) {
 window._addEditOptRow = function() {
   const container = document.getElementById('mg-edit-opts');
   if (!container) return;
+  const idx = _optRowIdx++;
   const div = document.createElement('div');
-  div.innerHTML = _optionRowHtml('e_' + _optRowIdx++);
+  div.innerHTML = _optionRowHtml(idx);
   container.appendChild(div.firstElementChild);
 };
 

@@ -342,6 +342,15 @@ async function deleteSelected() {
             });
           }
         }
+
+        for (const mod of (item.modifiers || [])) {
+          if (!mod.resep || mod.resep.length === 0) continue;
+          for (const bahan of mod.resep) {
+            batch.update(dbCloud.collection('raw_materials').doc(bahan.bahanId), {
+              stock: firebase.firestore.FieldValue.increment(bahan.qty * item.qty)
+            });
+          }
+        }
       }
       batch.delete(dbCloud.collection('transactions').doc(trx.id));
     }
