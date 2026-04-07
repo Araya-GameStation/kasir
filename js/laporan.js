@@ -282,12 +282,21 @@ function _buildDetailHTML(mode, isoKey) {
   const cashBersih = cash - totalPengeluaran;
 
   const recap = {};
+  const recapModifier = {};
   trxList.forEach(t => (t.items || []).forEach(i => {
     if (!recap[i.name]) recap[i.name] = { qty: 0, total: 0 };
     recap[i.name].qty += i.qty;
-    recap[i.name].total += i.subtotal || ((i.price + (i.modifierTotal || 0)) * i.qty);
+    recap[i.name].total += i.price * i.qty;
+    (i.modifiers || []).forEach(mod => {
+      if (!mod.price || mod.price <= 0) return;
+      const key = mod.optionName;
+      if (!recapModifier[key]) recapModifier[key] = { qty: 0, total: 0 };
+      recapModifier[key].qty += i.qty;
+      recapModifier[key].total += mod.price * i.qty;
+    });
   }));
-  const recapSorted = Object.entries(recap).sort((a, b) => b[1].total - a[1].total);
+  const recapSorted = Object.entries(recap).sort((a, b) => b[1].qty - a[1].qty);
+  const recapModSorted = Object.entries(recapModifier).sort((a, b) => b[1].qty - a[1].qty);
   const maxRecap = recapSorted[0]?.[1].total || 1;
 
   const bahanUsage = {};
@@ -335,6 +344,29 @@ function _buildDetailHTML(mode, isoKey) {
             </div>`
         }
       </div>
+
+      ${recapModSorted.length > 0 ? `
+        <div class="laporan-detail-section">
+          <div class="laporan-section-title"><i class="fas fa-sliders-h"></i> Add-on / Modifier Terjual</div>
+          <div class="recap-produk-list">
+            ${recapModSorted.map(([name, d]) => `
+              <div class="recap-produk-row">
+                <div class="recap-produk-rank"><i class="fas fa-plus-circle text-primary" style="font-size:0.7rem"></i></div>
+                <div class="recap-produk-info">
+                  <div class="recap-produk-name">${name}</div>
+                  <div class="recap-produk-bar-wrap">
+                    <div class="recap-produk-bar" style="width:${Math.round((d.total/(recapModSorted[0][1].total||1))*100)}%;background:var(--info)"></div>
+                  </div>
+                </div>
+                <div class="recap-produk-stats">
+                  <span class="recap-produk-qty">${d.qty}x</span>
+                  <span class="recap-produk-total">+Rp ${Utils.formatRupiah(d.total)}</span>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      ` : ''}
 
       ${pengeluaranList.length > 0 ? `
         <div class="laporan-detail-section">
@@ -463,10 +495,18 @@ window._exportLaporanPDF = async function(mode, isoKey) {
     const cashBersih = cash - totalPengeluaran;
 
     const recap = {};
+    const recapModifier = {};
     trxList.forEach(t => (t.items || []).forEach(i => {
       if (!recap[i.name]) recap[i.name] = { qty: 0, total: 0 };
       recap[i.name].qty += i.qty;
-      recap[i.name].total += i.subtotal || ((i.price + (i.modifierTotal || 0)) * i.qty);
+      recap[i.name].total += i.price * i.qty;
+      (i.modifiers || []).forEach(mod => {
+        if (!mod.price || mod.price <= 0) return;
+        const key = mod.optionName;
+        if (!recapModifier[key]) recapModifier[key] = { qty: 0, total: 0 };
+        recapModifier[key].qty += i.qty;
+        recapModifier[key].total += mod.price * i.qty;
+      });
     }));
 
     const lowStockBahan = (state.rawMaterials || [])
@@ -610,7 +650,7 @@ window._exportLaporanPDF = async function(mode, isoKey) {
       doc.autoTable({
         ...tblBase,
         startY: y,
-        head: [['Nama Produk', 'Terjual', 'Total']],
+        head: [['Nama Produk', 'Terjual', 'Total (Base)']],
         body: recapRows,
         columnStyles: {
           0: { cellWidth: 'auto' },
@@ -621,6 +661,31 @@ window._exportLaporanPDF = async function(mode, isoKey) {
           if (d.section === 'body' && d.row.index === 0) {
             d.cell.styles.fontStyle = 'bold';
           }
+        },
+      });
+      y = doc.lastAutoTable.finalY + 8;
+    }
+
+    const modRows = Object.entries(recapModifier)
+      .sort(function(a, b) { return b[1].qty - a[1].qty; })
+      .map(function(entry) {
+        return [entry[0], entry[1].qty + 'x', '+Rp ' + Utils.formatRupiah(entry[1].total)];
+      });
+
+    if (modRows.length > 0) {
+      const TEAL = [13, 148, 136];
+      section('ADD-ON / MODIFIER TERJUAL', TEAL);
+      doc.autoTable({
+        ...tblBase,
+        startY: y,
+        head: [['Nama Add-on', 'Terjual', 'Pendapatan Tambahan']],
+        body: modRows,
+        headStyles: { ...tblBase.headStyles, fillColor: TEAL },
+        alternateRowStyles: { fillColor: [240, 253, 250] },
+        columnStyles: {
+          0: { cellWidth: 'auto' },
+          1: { cellWidth: 22, halign: 'center' },
+          2: { cellWidth: 48, halign: 'right' },
         },
       });
       y = doc.lastAutoTable.finalY + 8;
