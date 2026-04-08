@@ -1,4 +1,5 @@
 let lastMenuScroll = 0;
+let _menuSearchQuery = '';
 
 function showImageCropModal(file) {
   return new Promise((resolve) => {
@@ -171,40 +172,83 @@ function renderMenuManager() {
     ...state.categories.filter(c => !c.system).sort((a, b) => a.name.localeCompare(b.name)),
     ...state.categories.filter(c => c.system)
   ];
+  const filteredCategories = !(_menuSearchQuery || '').trim() ? sortedCategories :
+    sortedCategories.filter(c => c.name.toLowerCase().includes(_menuSearchQuery.toLowerCase()) || 
+                          (state.menus || []).filter(m => m.categoryId === c.id).some(m => m.name.toLowerCase().includes(_menuSearchQuery.toLowerCase())));
+
+  const totalMenus = (state.menus || []).length;
+
   const content = `
     <div class="stack-y menu-stack">
-      <div class="row-between">
-        <h2 class="text-heading fw-bold"><i class="fas fa-utensils text-primary mr-2"></i> Kelola Kategori & Menu</h2>
-        <button class="btn btn-primary" onclick="const b=this;Utils.setButtonLoading(b,true);showAddCategoryModal().finally(()=>Utils.setButtonLoading(b,false))">
-          <i class="fas fa-plus"></i> Tambah Kategori
-        </button>
-      </div>
-      <div class="category-grid">
-        ${sortedCategories.map(c => `
-          <div class="category-card">
-            <div class="section-category-header">
-              <h3>${c.name}</h3>
-              ${c.system ? '<span class="badge-system">System</span>' : ''}
-            </div>
-            <div class="menu-item-meta">
-              ${state.menus.filter(m => m.categoryId === c.id).length} Produk
-            </div>
-            <div class="category-actions">
-              <button class="btn btn-primary btn-sm" onclick="openCategory('${c.id}')">
-                <i class="fas fa-folder-open"></i> Buka Menu
-              </button>
-              ${!c.system ? `
-                <button class="btn-icon-sm" onclick="editCategory('${c.id}')" title="Edit">
-                  <i class="fas fa-pen"></i>
-                </button>
-                <button class="btn-icon-sm btn-icon-danger" onclick="const b=this;Utils.setButtonLoading(b,true);deleteCategory('${c.id}').finally(()=>Utils.setButtonLoading(b,false))" title="Hapus">
-                  <i class="fas fa-trash"></i>
-                </button>
-              ` : ''}
-            </div>
+      <div class="management-control-bar">
+        <div class="search-wrapper">
+          <i class="fas fa-search"></i>
+          <input type="text" class="search-input" placeholder="Cari kategori atau menu..." 
+                 value="${_menuSearchQuery}" oninput="window._onMenuSearch(this.value)">
+        </div>
+        
+        <div class="management-stats">
+          <div class="stat-item">
+            <i class="fas fa-th-large"></i> <span class="text-muted">Kategori:</span> <span>${state.categories.length}</span>
           </div>
-        `).join('')}
+          <div class="stat-divider"></div>
+          <div class="stat-item">
+            <i class="fas fa-utensils"></i> <span class="text-muted">Menu:</span> <span>${totalMenus}</span>
+          </div>
+          ${_menuSearchQuery ? `
+            <div class="stat-divider"></div>
+            <div class="stat-item">
+              <i class="fas fa-filter"></i> <span class="text-muted">Hasil:</span> <span class="text-primary">${filteredCategories.length}</span>
+            </div>
+          ` : ''}
+        </div>
+
+        <div class="management-actions">
+          <button class="btn btn-primary" onclick="const b=this;Utils.setButtonLoading(b,true);showAddCategoryModal().finally(()=>Utils.setButtonLoading(b,false))">
+            <i class="fas fa-plus"></i> Tambah Kategori
+          </button>
+        </div>
       </div>
+
+      ${filteredCategories.length === 0 ? `
+        <div class="empty-center">
+          <div class="empty-state large">
+            <i class="fas ${_menuSearchQuery ? 'fa-search' : 'fa-utensils'}"></i>
+            <h2>${_menuSearchQuery ? 'Kategori Tidak Ditemukan' : 'Belum Ada Kategori'}</h2>
+            <p>${_menuSearchQuery ? `Tidak ada hasil untuk "${_menuSearchQuery}"` : 'Tambahkan kategori menu pertama Anda untuk memulai'}</p>
+            ${_menuSearchQuery ? `
+              <button class="btn btn-secondary btn-sm" onclick="window._onMenuSearch('')">Reset Pencarian</button>
+            ` : ''}
+          </div>
+        </div>
+      ` : `
+        <div class="category-grid">
+          ${filteredCategories.map(c => `
+            <div class="category-card">
+              <div class="section-category-header">
+                <h3>${c.name}</h3>
+                ${c.system ? '<span class="badge-system">System</span>' : ''}
+              </div>
+              <div class="menu-item-meta">
+                ${state.menus.filter(m => m.categoryId === c.id).length} Produk
+              </div>
+              <div class="category-actions">
+                <button class="btn btn-primary btn-sm" onclick="openCategory('${c.id}')">
+                  <i class="fas fa-folder-open"></i> Buka Menu
+                </button>
+                ${!c.system ? `
+                  <button class="btn-icon-sm" onclick="editCategory('${c.id}')" title="Edit">
+                    <i class="fas fa-pen"></i>
+                  </button>
+                  <button class="btn-icon-sm btn-icon-danger" onclick="const b=this;Utils.setButtonLoading(b,true);deleteCategory('${c.id}').finally(()=>Utils.setButtonLoading(b,false))" title="Hapus">
+                    <i class="fas fa-trash"></i>
+                  </button>
+                ` : ''}
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      `}
     </div>
   `;
   app.innerHTML = Layout.renderMain(content);
@@ -270,27 +314,35 @@ function openCategory(id) {
   const category = state.categories.find(c => c.id === id);
   if (!category) return;
   const menus = state.menus.filter(m => m.categoryId === id);
-  const sortedMenus = SortableTable.sort(menus, 'menus');
+  
+  const filteredMenus = !(state.categorySearchQuery || '').trim() ? menus :
+    menus.filter(m => m.name.toLowerCase().includes(state.categorySearchQuery.toLowerCase()));
+
+  const sortedMenus = SortableTable.sort(filteredMenus, 'menus');
   const content = `
     <div class="stack-y menu-stack">
-      <div class="row-between">
-        <h2 class="text-heading fw-bold"><i class="fas fa-folder-open text-primary mr-2"></i> ${category.name}</h2>
-        <button class="btn-kembali" onclick="renderMenuManager()">
-          <i class="fas fa-arrow-left"></i> Kembali
-        </button>
+      <div class="management-control-bar">
+        <div class="search-wrapper">
+          <i class="fas fa-search"></i>
+          <input type="text" class="search-input" placeholder="Cari menu di kategori ini..." 
+                 value="${state.categorySearchQuery || ''}" oninput="window._onCatSearch(this.value)">
+        </div>
+        
+        <div class="management-stats" id="cat-stats-container">
+          ${_renderCatStatsHTML(category, menus, filteredMenus)}
+        </div>
+
+        <div class="management-actions">
+          <button class="btn-kembali" onclick="state.categorySearchQuery=''; renderMenuManager()">
+            <i class="fas fa-arrow-left"></i> Kembali
+          </button>
+        </div>
       </div>
-      <div class="row-gap">
-        <button class="btn btn-primary" onclick="showAddMenuModal('${id}')">
-          <i class="fas fa-plus"></i> Tambah Menu
-        </button>
-        <button class="btn btn-secondary" onclick="toggleSelectAllMenu('${id}')">
-          ${state.selectedMenus.size === menus.length ? 'Batal Pilih' : 'Pilih Semua'}
-        </button>
-        <button class="btn btn-danger" onclick="const b=this;Utils.setButtonLoading(b,true);deleteSelectedMenus('${id}').finally(()=>Utils.setButtonLoading(b,false))" 
-                ${state.selectedMenus.size === 0 ? 'disabled' : ''}>
-          <i class="fas fa-trash"></i> Hapus ${state.selectedMenus.size > 0 ? `(${state.selectedMenus.size})` : ''}
-        </button>
+
+      <div class="row-gap mb-3 mt-1" id="cat-actions-container">
+        ${_renderCatActionsHTML(id, filteredMenus)}
       </div>
+
       <table class="table-full">
         <thead class="neu-table-head">
           <tr>
@@ -306,44 +358,8 @@ function openCategory(id) {
             <th class="td-base text-left">Aksi</th>
           </tr>
         </thead>
-        <tbody>
-          ${sortedMenus.length === 0 ?
-      '<tr><td colspan="6" class="td-base text-center text-muted">Belum ada menu</td></tr>' :
-      sortedMenus.map(m => {
-        const stokOtomatis = m.resep ? Utils.hitungStokProduk(m) : null;
-        return `
-                <tr class="neu-table-row">
-                  <td class="td-base">
-                    <input type="checkbox" ${state.selectedMenus.has(m.id) ? 'checked' : ''} 
-                           onchange="toggleSelectMenu('${m.id}')">
-                  </td>
-                  <td class="td-base">
-                    ${m.imageUrl
-            ? `<img src="${m.imageUrl}" alt="foto" class="img-table-thumb">`
-            : `<span class="img-table-placeholder"><i class="fas fa-image"></i></span>`
-          }
-                  </td>
-                  <td class="td-base td-medium">${m.name}</td>
-                  <td class="td-base">Rp ${Utils.formatRupiah(m.price)}</td>
-                  <td class="td-base">
-                    ${m.resep ?
-            `<span class="text-base-sm"><i class="fas fa-cubes"></i> ${stokOtomatis} porsi</span>` :
-            m.useStock ?
-              `<span class="text-base-sm"><i class="fas fa-box"></i> ${m.stock}</span>` :
-              '<span class="text-base-sm text-muted"><i class="fas fa-infinity"></i></span>'
-          }
-                  </td>
-                  <td class="td-base">
-                    <button class="btn-icon-sm" onclick="editMenu('${m.id}')" title="Edit">
-                      <i class="fas fa-edit"></i>
-                    </button>
-                    <button class="btn-icon-sm btn-icon-danger" onclick="const b=this;Utils.setButtonLoading(b,true);deleteMenu('${m.id}').finally(()=>Utils.setButtonLoading(b,false))" title="Hapus">
-                      <i class="fas fa-trash"></i>
-                    </button>
-                  </td>
-                </tr>
-              `;
-      }).join('')}
+        <tbody id="cat-menu-tbody">
+          ${_renderCatTableBodyHTML(sortedMenus)}
         </tbody>
       </table>
     </div>
@@ -355,6 +371,80 @@ function openCategory(id) {
       _main.scrollTop = lastMenuScroll;
     }
   });
+}
+
+function _renderCatStatsHTML(category, allMenus, filteredMenus) {
+  return `
+    <div class="stat-item">
+      <i class="fas fa-folder-open text-primary mr-1"></i> <strong>${category.name}</strong>
+    </div>
+    <div class="stat-divider"></div>
+    <div class="stat-item">
+      <i class="fas fa-list-ul"></i> <span class="text-muted">Item:</span> <span>${allMenus.length}</span>
+    </div>
+    ${state.categorySearchQuery ? `
+      <div class="stat-divider"></div>
+      <div class="stat-item">
+        <i class="fas fa-filter"></i> <span class="text-muted">Hasil:</span> <span class="text-primary">${filteredMenus.length}</span>
+      </div>
+    ` : ''}
+  `;
+}
+
+function _renderCatActionsHTML(categoryId, filteredMenus) {
+  return `
+    <button class="btn btn-primary" onclick="showAddMenuModal('${categoryId}')">
+      <i class="fas fa-plus"></i> Tambah Menu
+    </button>
+    <button class="btn btn-secondary" onclick="toggleSelectAllMenu('${categoryId}')">
+      ${state.selectedMenus.size === filteredMenus.length && filteredMenus.length > 0 ? 'Batal Pilih' : 'Pilih Semua'}
+    </button>
+    <button class="btn btn-danger" onclick="const b=this;Utils.setButtonLoading(b,true);deleteSelectedMenus('${categoryId}').finally(()=>Utils.setButtonLoading(b,false))" 
+            ${state.selectedMenus.size === 0 ? 'disabled' : ''}>
+      <i class="fas fa-trash"></i> Hapus ${state.selectedMenus.size > 0 ? `(${state.selectedMenus.size})` : ''}
+    </button>
+  `;
+}
+
+function _renderCatTableBodyHTML(sortedMenus) {
+  if (sortedMenus.length === 0) {
+    return '<tr><td colspan="6" class="td-base text-center text-muted">Tidak ada menu ditemukan</td></tr>';
+  }
+  return sortedMenus.map(m => {
+    const isSelected = state.selectedMenus.has(m.id);
+    const stokOtomatis = m.resep ? Utils.hitungStokProduk(m) : null;
+    return `
+      <tr class="neu-table-row ${isSelected ? 'row-selected' : ''}" onclick="toggleSelectMenu('${m.id}', event)">
+        <td class="td-base">
+          <input type="checkbox" ${isSelected ? 'checked' : ''} onchange="toggleSelectMenu('${m.id}')">
+        </td>
+        <td class="td-base">
+          ${m.imageUrl
+            ? `<img src="${m.imageUrl}" alt="foto" class="img-table-thumb">`
+            : `<span class="img-table-placeholder"><i class="fas fa-image"></i></span>`
+          }
+        </td>
+        <td class="td-base td-medium">${m.name}</td>
+        <td class="td-base">Rp ${Utils.formatRupiah(m.price)}</td>
+        <td class="td-base">
+          ${m.resep ?
+            `<span class="text-base-sm"><i class="fas fa-cubes"></i> ${stokOtomatis} porsi</span>` :
+            m.useStock ?
+              `<span class="text-base-sm"><i class="fas fa-box"></i> ${m.stock}</span>` :
+              '<span class="text-base-sm text-muted"><i class="fas fa-infinity"></i></span>'
+          }
+        </td>
+        <td class="td-base">
+          <button class="btn-icon-sm" onclick="event.stopPropagation(); editMenu('${m.id}')" title="Edit">
+            <i class="fas fa-edit"></i>
+          </button>
+          <button class="btn-icon-sm btn-icon-danger" onclick="event.stopPropagation(); const b=this;Utils.setButtonLoading(b,true);deleteMenu('${m.id}').finally(()=>Utils.setButtonLoading(b,false))" title="Hapus">
+            <i class="fas fa-trash"></i>
+          </button>
+        </td>
+      </tr>
+    `;
+  }).join('');
 }
 
 function sortMenus(field) {
@@ -861,6 +951,16 @@ window.renderMenuManager = renderMenuManager;
 window.showAddCategoryModal = showAddCategoryModal;
 window.editCategory = editCategory;
 window.deleteCategory = deleteCategory;
+
+window._onMenuSearch = function(val) {
+  _menuSearchQuery = val;
+  renderMenuManager();
+  const input = document.querySelector('.search-input');
+  if (input) {
+    input.focus();
+    input.setSelectionRange(val.length, val.length);
+  }
+};
 window.openCategory = openCategory;
 window.showAddMenuModal = showAddMenuModal;
 window.editMenu = editMenu;
@@ -869,3 +969,23 @@ window.toggleSelectMenu = toggleSelectMenu;
 window.toggleSelectAllMenu = toggleSelectAllMenu;
 window.deleteSelectedMenus = deleteSelectedMenus;
 window.sortMenus = sortMenus;
+
+window._onCatSearch = function(val) {
+  state.categorySearchQuery = val;
+  const id = state.currentCategoryId;
+  const category = state.categories.find(c => c.id === id);
+  if (!category) return;
+  const menus = state.menus.filter(m => m.categoryId === id);
+  const filteredMenus = !(state.categorySearchQuery || '').trim() ? menus :
+    menus.filter(m => m.name.toLowerCase().includes(state.categorySearchQuery.toLowerCase()));
+  const sortedMenus = SortableTable.sort(filteredMenus, 'menus');
+
+  const statsContainer = document.getElementById('cat-stats-container');
+  if (statsContainer) statsContainer.innerHTML = _renderCatStatsHTML(category, menus, filteredMenus);
+
+  const actionsContainer = document.getElementById('cat-actions-container');
+  if (actionsContainer) actionsContainer.innerHTML = _renderCatActionsHTML(id, filteredMenus);
+
+  const tbody = document.getElementById('cat-menu-tbody');
+  if (tbody) tbody.innerHTML = _renderCatTableBodyHTML(sortedMenus);
+};

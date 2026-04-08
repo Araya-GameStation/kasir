@@ -20,7 +20,8 @@ function renderKasir() {
         const cat = state.categories.find(c => c.id === m.categoryId);
         return cat && cat.name === state.selectedCategory;
       })
-  ).sort((a, b) => a.name.localeCompare(b.name));
+  ).filter(m => !state.kasirSearchQuery || m.name.toLowerCase().includes(state.kasirSearchQuery.toLowerCase()))
+   .sort((a, b) => a.name.localeCompare(b.name));
 
   const content = `
     <div class="pos-layout">
@@ -34,12 +35,28 @@ function renderKasir() {
               </button>
             `).join('')}
           </div>
-        </div>
-        <div class="menu-scroll-container" id="menu-scroll-container">
-          <div class="menu-grid" id="menu-grid-container">
-            ${filteredMenus.map(m => renderMenuItem(m)).join('')}
+          <div class="pos-search-wrapper">
+            <i class="fas fa-search"></i>
+            <input type="text" class="pos-search-input" placeholder="Cari..." 
+                   value="${state.kasirSearchQuery || ''}" oninput="window._onKasirSearch(this.value)">
+            ${state.kasirSearchQuery ? `
+              <button class="pos-search-clear" onclick="window._clearKasirSearch()">
+                <i class="fas fa-times-circle"></i>
+              </button>
+            ` : ''}
           </div>
         </div>
+          <div class="menu-scroll-container" id="menu-scroll-container">
+            <div class="menu-grid ${filteredMenus.length === 0 ? 'empty-grid' : ''}" id="menu-grid-container">
+              ${filteredMenus.length === 0 ? `
+                <div class="empty-state">
+                  <i class="fas fa-search"></i>
+                  <p>Produk tidak ditemukan</p>
+                  ${state.kasirSearchQuery ? `<button class="btn btn-secondary btn-sm mt-2" onclick="window._clearKasirSearch()">Reset Pencarian</button>` : ''}
+                </div>
+              ` : filteredMenus.map(m => renderMenuItem(m)).join('')}
+            </div>
+          </div>
       </div>
       <div class="pos-right-panel">
         <div class="checkout-panel pos-checkout-panel">
@@ -206,21 +223,41 @@ function selectCategory(c) {
       btn.classList.toggle('active', btn.textContent.trim() === c);
     });
   }
+  _renderKasirMenuGrid();
+  
+  const grid = document.getElementById('menu-grid-container');
+  if (grid) {
+    grid.classList.remove('category-enter');
+    void grid.offsetWidth;
+    grid.classList.add('category-enter');
+  }
+}
+
+function _renderKasirMenuGrid() {
   const filteredMenus = (state.selectedCategory === "ALL"
     ? state.menus
     : state.menus.filter(m => {
         const cat = state.categories.find(c => c.id === m.categoryId);
         return cat && cat.name === state.selectedCategory;
       })
-  ).sort((a, b) => a.name.localeCompare(b.name));
+  ).filter(m => !state.kasirSearchQuery || m.name.toLowerCase().includes(state.kasirSearchQuery.toLowerCase()))
+   .sort((a, b) => a.name.localeCompare(b.name));
+
   const grid = document.getElementById('menu-grid-container');
   if (grid) {
-    grid.innerHTML = filteredMenus.map(m => renderMenuItem(m)).join('');
-    const menuScroll = document.getElementById('menu-scroll-container');
-    if (menuScroll) menuScroll.scrollTop = 0;
-    grid.classList.remove('category-enter');
-    void grid.offsetWidth;
-    grid.classList.add('category-enter');
+    if (filteredMenus.length === 0) {
+      grid.innerHTML = `
+        <div class="empty-state">
+          <i class="fas fa-search"></i>
+          <p>Produk tidak ditemukan</p>
+          ${state.kasirSearchQuery ? `<button class="btn btn-secondary btn-sm mt-2" onclick="window._clearKasirSearch()">Reset Pencarian</button>` : ''}
+        </div>
+      `;
+      grid.classList.add('empty-grid');
+    } else {
+      grid.innerHTML = filteredMenus.map(m => renderMenuItem(m)).join('');
+      grid.classList.remove('empty-grid');
+    }
   }
 }
 
@@ -909,5 +946,16 @@ window.pilihMeja = pilihMeja;
 window.simpanKeOpenBill = simpanKeOpenBill;
 window.bayar = bayar;
 window.showPaymentModal = showPaymentModal;
+
+window._onKasirSearch = function(val) {
+  state.kasirSearchQuery = val;
+  _renderKasirMenuGrid();
+
+};
+
+window._clearKasirSearch = function() {
+  state.kasirSearchQuery = '';
+  renderKasir();
+};
 window.renderModalPaymentContent = renderModalPaymentContent;
 window._loadOpenBill = _loadOpenBill;

@@ -5,7 +5,7 @@ function renderLaporan() {
   state.currentView = 'laporan';
   const content = `
     <div class="stack-y">
-      <div class="laporan-tab-bar">
+      <div class="tab-nav">
         ${['harian','mingguan','bulanan','shift'].map(m => `
           <button class="tab-btn ${_laporanMode === m ? 'active' : ''}" onclick="window._setLaporanMode('${m}')">
             ${m === 'harian' ? '<i class="fas fa-calendar-day"></i> Harian'
@@ -70,7 +70,7 @@ function _rowItem(label, sublabel, trxCount, total, isoKey, mode, extra) {
   return `
     <div class="laporan-row ${empty ? 'laporan-row-empty' : ''}">
       <div class="laporan-row-info">
-        <div class="laporan-row-label">${label}</div>
+        <div class="laporan-row-label">${label} ${extra || ''}</div>
         ${sublabel ? `<div class="laporan-row-sublabel">${sublabel}</div>` : ''}
       </div>
       <div class="laporan-row-stats">
@@ -78,7 +78,6 @@ function _rowItem(label, sublabel, trxCount, total, isoKey, mode, extra) {
         <span class="laporan-row-total">${empty ? '&mdash;' : 'Rp ' + _shortRupiah(total)}</span>
       </div>
       <div class="laporan-row-actions">
-        ${extra || ''}
         <button class="btn-icon-sm" title="Lihat Detail"
           onclick="window._showLaporanDetail('${mode}','${isoKey}')">
           <i class="fas fa-eye"></i>

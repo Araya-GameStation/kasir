@@ -85,7 +85,9 @@ let state = createState({
     lastMenuScroll: 0,
     lastCartScroll: 0,
     modifierGroups: [],
-    openBills: []
+    openBills: [],
+    kasirSearchQuery: '',
+    categorySearchQuery: ''
 });
 
 window.app = app;

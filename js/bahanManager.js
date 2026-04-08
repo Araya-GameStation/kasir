@@ -1,4 +1,5 @@
 let lastBahanScroll = 0;
+let _bahanSearchQuery = '';
 
 function renderBahanManager() {
   const _m = document.querySelector('main');
@@ -7,13 +8,39 @@ function renderBahanManager() {
   state.currentView = "bahanManager";
   const lowStockMaterials = state.rawMaterials.filter(b => b.stock <= (b.minStock || 5));
   const sortedBahan = SortableTable.sort(state.rawMaterials, 'bahan');
+  const filteredBahan = !(_bahanSearchQuery || '').trim() ? sortedBahan :
+    sortedBahan.filter(b => b.name.toLowerCase().includes(_bahanSearchQuery.toLowerCase()) || 
+                          (b.supplier || '').toLowerCase().includes(_bahanSearchQuery.toLowerCase()));
+
   const content = `
     <div class="stack-y">
-      <div class="row-between">
-        <h2 class="text-heading fw-bold"><i class="fas fa-boxes text-primary mr-2"></i> Bahan Baku</h2>
-        <div class="badge-group">
-          <span class="badge badge-system">Total: ${state.rawMaterials.length}</span>
-          <span class="badge badge-warning">Menipis: ${lowStockMaterials.length}</span>
+      <div class="management-control-bar">
+        <div class="search-wrapper">
+          <i class="fas fa-search"></i>
+          <input type="text" class="search-input" placeholder="Cari bahan..." 
+                 value="${_bahanSearchQuery}" oninput="window._onBahanSearch(this.value)">
+        </div>
+        
+        <div class="management-stats">
+          <div class="stat-item">
+            <i class="fas fa-boxes"></i> <span class="text-muted">Total:</span> <span>${state.rawMaterials.length}</span>
+          </div>
+          <div class="stat-divider"></div>
+          <div class="stat-item">
+            <i class="fas fa-exclamation-triangle"></i> <span class="text-muted">Menipis:</span> <span class="${lowStockMaterials.length > 0 ? 'text-warning' : ''}">${lowStockMaterials.length}</span>
+          </div>
+          ${_bahanSearchQuery ? `
+            <div class="stat-divider"></div>
+            <div class="stat-item">
+              <i class="fas fa-filter"></i> <span class="text-muted">Hasil:</span> <span class="text-primary">${filteredBahan.length}</span>
+            </div>
+          ` : ''}
+        </div>
+
+        <div class="management-actions">
+          <button class="btn btn-primary" onclick="showAddBahanModal()">
+            <i class="fas fa-plus"></i> Tambah Bahan
+          </button>
         </div>
       </div>
       ${lowStockMaterials.length > 0 ? `
@@ -23,9 +50,7 @@ function renderBahanManager() {
           ${lowStockMaterials.length > 5 ? ` +${lowStockMaterials.length - 5} lainnya` : ''}
         </div>
       ` : ''}
-      <button class="btn btn-primary" onclick="showAddBahanModal()">
-        <i class="fas fa-plus"></i> Tambah Bahan
-      </button>
+
       <table class="table-full">
         <thead class="settings-table-head">
           <tr>
@@ -41,7 +66,7 @@ function renderBahanManager() {
           </tr>
         </thead>
         <tbody>
-          ${sortedBahan.map(b => `
+          ${filteredBahan.map(b => `
             <tr class="neu-table-row">
               <td class="td-base td-medium">${b.name}</td>
               <td class="td-base">
@@ -562,3 +587,13 @@ window.lihatRiwayatStok = lihatRiwayatStok;
 window.editBahan = editBahan;
 window.hapusBahan = hapusBahan;
 window.sortBahan = sortBahan;
+
+window._onBahanSearch = function(val) {
+  _bahanSearchQuery = val;
+  renderBahanManager();
+  const input = document.querySelector('.search-input');
+  if (input) {
+    input.focus();
+    input.setSelectionRange(val.length, val.length);
+  }
+};

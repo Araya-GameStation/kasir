@@ -1,31 +1,60 @@
 let _optRowIdx = 0;
+let _modSearchQuery = '';
 
 function renderModifierManager() {
   state.currentView = 'modifierManager';
   const groups = state.modifierGroups || [];
 
+  const filteredGroups = !(_modSearchQuery || '').trim() ? groups :
+    groups.filter(g => g.name.toLowerCase().includes(_modSearchQuery.toLowerCase()) || 
+                      (g.options || []).some(o => o.name.toLowerCase().includes(_modSearchQuery.toLowerCase())));
+
   const content = `
     <div class="stack-y">
-      <div class="panel-header-inner">
-        <h2><i class="fas fa-sliders-h"></i> Modifier & Add-on</h2>
-        <button class="btn btn-primary" onclick="showAddModifierGroupModal()">
-          <i class="fas fa-plus"></i> Tambah Group
-        </button>
+      <div class="management-control-bar">
+        <div class="search-wrapper">
+          <i class="fas fa-search"></i>
+          <input type="text" class="search-input" placeholder="Cari modifier..." 
+                 value="${_modSearchQuery}" oninput="window._onModSearch(this.value)">
+        </div>
+        
+        <div class="management-stats">
+          <div class="stat-item">
+            <i class="fas fa-layer-group"></i> <span class="text-muted">Total:</span> <span>${groups.length} Group</span>
+          </div>
+          ${_modSearchQuery ? `
+            <div class="stat-divider"></div>
+            <div class="stat-item">
+              <i class="fas fa-filter"></i> <span class="text-muted">Hasil:</span> <span class="text-primary">${filteredGroups.length}</span>
+            </div>
+          ` : ''}
+        </div>
+
+        <div class="management-actions">
+          <button class="btn btn-primary" onclick="showAddModifierGroupModal()">
+            <i class="fas fa-plus"></i> Tambah Group
+          </button>
+        </div>
       </div>
-      ${groups.length === 0 ? `
+
+      ${filteredGroups.length === 0 ? `
         <div class="empty-center">
           <div class="empty-state large">
-            <i class="fas fa-sliders-h"></i>
-            <h2>Belum Ada Modifier</h2>
-            <p>Buat modifier group untuk add-on atau pilihan menu</p>
-            <button class="btn btn-primary" onclick="showAddModifierGroupModal()">
-              <i class="fas fa-plus"></i> Tambah Group
-            </button>
+            <i class="fas ${_modSearchQuery ? 'fa-search' : 'fa-sliders-h'}"></i>
+            <h2>${_modSearchQuery ? 'Modifier Tidak Ditemukan' : 'Belum Ada Modifier'}</h2>
+            <p>${_modSearchQuery ? `Tidak ada hasil untuk "${_modSearchQuery}"` : 'Buat modifier group untuk add-on atau pilihan menu'}</p>
+            ${_modSearchQuery ? `
+              <button class="btn btn-secondary btn-sm" onclick="window._onModSearch('')">Reset Pencarian</button>
+            ` : `
+              <button class="btn btn-primary" onclick="showAddModifierGroupModal()">
+                <i class="fas fa-plus"></i> Tambah Group
+              </button>
+            `}
           </div>
         </div>
       ` : `
         <div class="modifier-group-list">
-          ${groups.map(g => _renderGroupCard(g)).join('')}
+          ${filteredGroups.map(g => _renderGroupCard(g)).join('')}
         </div>
       `}
     </div>
@@ -133,14 +162,14 @@ function _resepSectionHtml(optIdx, resep = []) {
     ? resep.map((r, i) => _resepRowHtml(optIdx, i, r)).join('')
     : _resepRowHtml(optIdx, 0);
   return `
-    <div class="opt-resep-section" id="resep-section-${optIdx}">
-      <div class="opt-resep-header">
+    <div class="opt-resep-section" id="resep-section-${optIdx}" style="margin-top: 12px; padding: 12px; background: var(--surface2); border-radius: var(--radius-sm); border: 1px dashed var(--border);">
+      <div class="opt-resep-header" style="margin-bottom: 8px;">
         <small class="text-muted"><i class="fas fa-flask"></i> Resep Bahan (opsional)</small>
       </div>
       <div class="recipe-container" id="resep-container-${optIdx}">
         ${rows}
       </div>
-      <button type="button" class="recipe-add" onclick="window._addModResepRow('${optIdx}')">
+      <button type="button" class="recipe-add btn btn-sm btn-outline-primary" style="width:100%; border-style: dashed;" onclick="window._addModResepRow('${optIdx}')">
         <i class="fas fa-plus"></i> Tambah Bahan
       </button>
     </div>
@@ -167,14 +196,17 @@ window._addModResepRow = function(optIdx) {
 
 function _optionRowHtml(idx, opt = {}) {
   return `
-    <div class="modifier-option-row-wrap" data-id="${opt.id || ''}" id="opt-row-${idx}">
-      <div class="modifier-option-row">
+    <div class="modifier-option-row-wrap" data-id="${opt.id || ''}" id="opt-row-${idx}" style="margin-bottom: 16px; padding-bottom: 16px; border-bottom: 1px solid var(--border-light);">
+      <div class="modifier-option-row" style="margin-bottom: 6px;">
         <input type="text" class="form-input opt-name" placeholder="Nama opsi" value="${opt.name || ''}">
-        <input type="number" class="form-input opt-price" placeholder="Harga tambah" value="${opt.price || 0}" min="0">
+        <div style="position: relative; display: flex; align-items: center;">
+          <span style="position: absolute; left: 10px; font-size: 0.9rem; color: var(--text-muted); pointer-events: none;">Rp</span>
+          <input type="number" class="form-input opt-price" style="padding-left: 32px;" placeholder="0" value="${opt.price === undefined ? '' : opt.price}" min="0">
+        </div>
         <label class="modifier-default-label">
           <input type="checkbox" class="opt-default" ${opt.isDefault ? 'checked' : ''}> Default
         </label>
-        <button class="btn-icon-sm btn-icon-danger" onclick="document.getElementById('opt-row-${idx}').remove()">
+        <button class="btn-icon-sm btn-icon-danger" style="margin-left:auto;" onclick="document.getElementById('opt-row-${idx}').remove()">
           <i class="fas fa-times"></i>
         </button>
       </div>
@@ -206,15 +238,38 @@ function _collectResep(optIdx) {
   return resep;
 }
 
+function _collectResepFromRow(optWrapRow) {
+  const container = optWrapRow.querySelector('.recipe-container');
+  if (!container) return [];
+  const resep = [];
+  container.querySelectorAll('.recipe-row').forEach(row => {
+    const bahanSel = row.querySelector('.opt-resep-bahan');
+    const qtyInput = row.querySelector('.opt-resep-qty');
+    const satuanEl = row.querySelector('.opt-resep-satuan');
+    const bahanId = bahanSel?.value;
+    const qty = parseFloat(qtyInput?.value) || 0;
+    if (bahanId && qty > 0) {
+      const bahan = (state.rawMaterials || []).find(b => b.id === bahanId);
+      resep.push({
+        bahanId,
+        namaBahan: bahan?.name || '',
+        qty,
+        satuan: satuanEl?.textContent?.trim() || bahan?.satuan || 'pcs'
+      });
+    }
+  });
+  return resep;
+}
+
 function _collectOptions(containerSelector) {
   const rows = document.querySelectorAll(`${containerSelector} .modifier-option-row-wrap`);
   const options = [];
-  rows.forEach((row, idx) => {
+  rows.forEach((row) => {
     const name = row.querySelector('.opt-name')?.value?.trim();
     const price = parseInt(row.querySelector('.opt-price')?.value) || 0;
     const isDefault = row.querySelector('.opt-default')?.checked || false;
     const id = row.dataset.id || _genId();
-    const resep = _collectResep(idx);
+    const resep = _collectResepFromRow(row);
     if (name) options.push({ id, name, price, isDefault, resep });
   });
   return options;
@@ -445,3 +500,13 @@ window.saveNewModifierGroup = saveNewModifierGroup;
 window.editModifierGroup = editModifierGroup;
 window.saveEditModifierGroup = saveEditModifierGroup;
 window.deleteModifierGroup = deleteModifierGroup;
+
+window._onModSearch = function(val) {
+  _modSearchQuery = val;
+  renderModifierManager();
+  const input = document.querySelector('.search-input');
+  if (input) {
+    input.focus();
+    input.setSelectionRange(val.length, val.length);
+  }
+};

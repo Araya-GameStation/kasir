@@ -12,9 +12,7 @@ function renderSettings() {
   state.currentView = "settings";
   const content = `
     <div class="stack-y">
-      <div class="settings-header">
-        <h2><i class="fas fa-cog"></i> Pengaturan</h2>
-      </div>
+
       <div class="tab-nav">
         <button class="tab-btn ${currentSettingsTab === 'toko' ? 'active' : ''}" onclick="switchSettingsTab('toko')">
           <i class="fas fa-store"></i> Toko
@@ -239,16 +237,6 @@ function renderSettingsTab() {
         <div class="backup-grid">
           <div class="backup-card">
             <div class="backup-icon">
-              <i class="fas fa-file-pdf"></i>
-            </div>
-            <h4>Export PDF (Semua Data)</h4>
-            <p>Download laporan semua transaksi</p>
-            <button class="btn btn-primary" onclick="const b=this;Utils.setButtonLoading(b,true);exportToPDFAll().finally(()=>Utils.setButtonLoading(b,false))">
-              <i class="fas fa-download"></i> Export
-            </button>
-          </div>
-          <div class="backup-card">
-            <div class="backup-icon">
               <i class="fas fa-file-import"></i>
             </div>
             <h4>Import Excel</h4>
@@ -467,42 +455,7 @@ async function exportToPDFShift() {
   });
 }
 
-async function exportToPDFAll() {
-  const totalTransaksi = state.allTransactions?.length || 0;
-  const totalPenjualan = state.allTransactions?.reduce((s, t) => s + t.total, 0) || 0;
-  const totalCash = state.allTransactions?.reduce((s, t) => s + (t.cashAmount || (t.metodeBayar === 'tunai' ? t.total : 0)), 0) || 0;
-  const totalQRIS = state.allTransactions?.reduce((s, t) => s + (t.qrisAmount || (t.metodeBayar === 'qris' ? t.total : 0)), 0) || 0;
-  const totalPengeluaran = state.pengeluaran?.reduce((s, p) => s + (p.nominal || 0), 0) || 0;
-  const cashBersih = totalCash - totalPengeluaran;
-  const pengeluaranList = state.pengeluaran || [];
 
-  const produkCount = {};
-  state.allTransactions?.forEach(t => {
-    t.items.forEach(i => {
-      if (!produkCount[i.name]) produkCount[i.name] = { qty: 0, total: 0 };
-      produkCount[i.name].qty += i.qty;
-      produkCount[i.name].total += i.price * i.qty;
-    });
-  });
-  const topProducts = Object.entries(produkCount).sort((a, b) => b[1].qty - a[1].qty);
-
-  const lowStock = state.rawMaterials?.filter(b => b.stock <= (b.minStock || 5)) || [];
-
-  await generatePDF({
-    title: 'LAPORAN HARIAN GARIS WAKTU',
-    subtitle: `Periode: Seluruh Shift | Dicetak: ${new Date().toLocaleString('id-ID')}`,
-    totalTransaksi,
-    totalPenjualan,
-    totalCash,
-    totalQRIS,
-    totalPengeluaran,
-    cashBersih,
-    pengeluaranList,
-    topProducts,
-    lowStock,
-    filename: `gariswaktu_laporan_harian_${new Date().toISOString().slice(0, 10)}.pdf`
-  });
-}
 
 async function generatePDF(data) {
   try {
@@ -1044,7 +997,6 @@ window.hapusKasir = hapusKasir;
 window.sortKasir = sortKasir;
 window.editKasir = editKasir;
 window.exportToPDFShift = exportToPDFShift;
-window.exportToPDFAll = exportToPDFAll;
 window.importFromExcel = importFromExcel;
 window.downloadTemplateExcel = downloadTemplateExcel;
 window.resetRiwayatOnly = resetRiwayatOnly;
