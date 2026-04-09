@@ -131,7 +131,7 @@ window.Utils = {
                 ? "const _ob=(options.buttons||[]).find(x=>x.action==='" + act + "');if(_ob&&_ob.onClick)_ob.onClick();"
                 : '';
             return '<button class="swal2-confirm swal2-styled swal-action-btn ' + cls + '"'
-                + ' onclick="window._modalAction=\'' + act + '\';">' + b.text + '</button>';
+                + ' onclick="window._modalAction=\'' + act + '\';Swal.clickConfirm();">' + b.text + '</button>';
         }).join('');
 
         var result = await Swal.fire({
