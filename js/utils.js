@@ -120,9 +120,15 @@ window.Utils = {
         const nonCancelBtns = (options.buttons || []).filter(b => b.action !== 'cancel');
         const cancelBtn     = (options.buttons || []).find(b => b.action === 'cancel');
         const primaryBtn    = nonCancelBtns[0];
-        const footerBtns    = nonCancelBtns.slice(1).map(b =>
-            `<button class="swal2-confirm swal2-styled swal-action-btn ${b.class||''}" onclick="window._modalAction='${b.action}';${b.onClick?'const _ob=options.buttons.find(x=>x.action===\\''+b.action+'\\');if(_ob?.onClick)_ob.onClick();':''}Swal.clickConfirm()">${b.text}</button>`
-        ).join('');
+        const footerBtns = nonCancelBtns.slice(1).map(function(b) {
+            var onclickExtra = b.onClick
+                ? "const _ob=options.buttons.find(x=>x.action=='" + b.action + "');if(_ob&&_ob.onClick)_ob.onClick();"
+                : '';
+            var cls = b.class || '';
+            return '<button class="swal2-confirm swal2-styled swal-action-btn ' + cls + '"'
+                + ' onclick="window._modalAction=\'' + b.action + '\';' + onclickExtra + 'Swal.clickConfirm()">'
+                + b.text + '</button>';
+        }).join('');
         const result = await Swal.fire({
             title: options.title,
             html: options.content + (footerBtns ? `<div class="swal-footer-btns">${footerBtns}</div>` : ''),
