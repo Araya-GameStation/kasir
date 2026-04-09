@@ -79,6 +79,7 @@ function renderKasir() {
   `;
 
   app.innerHTML = Layout.renderMain(content);
+  Layout._restoreSidebarScroll();
 
   const _catEl = document.getElementById('category-scroll-container');
   if (_catEl && state.lastCategoryScroll > 0) _catEl.scrollLeft = state.lastCategoryScroll;
@@ -104,6 +105,7 @@ function renderNoSession() {
       </div>
     </div>
   `);
+  Layout._restoreSidebarScroll();
 }
 
 function renderMenuItem(m) {

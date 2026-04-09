@@ -36,6 +36,7 @@ function renderSettings() {
     </div>
   `;
   app.innerHTML = Layout.renderMain(content);
+  Layout._restoreSidebarScroll();
   requestAnimationFrame(() => {
     const _main = document.querySelector('main');
     if (_main && lastSettingsScroll > 0) {

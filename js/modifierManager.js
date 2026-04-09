@@ -1,7 +1,15 @@
 let _optRowIdx = 0;
 let _modSearchQuery = '';
 
+let lastModifierScroll = 0;
+
+function _saveModifierScroll() {
+  const m = document.querySelector('main');
+  if (m) lastModifierScroll = m.scrollTop;
+}
+
 function renderModifierManager() {
+  _saveModifierScroll();
   state.currentView = 'modifierManager';
   const groups = state.modifierGroups || [];
 
@@ -61,6 +69,8 @@ function renderModifierManager() {
   `;
 
   app.innerHTML = Layout.renderMain(content);
+  Layout._restoreSidebarScroll();
+  requestAnimationFrame(() => { const mn = document.querySelector("main"); if (mn && lastModifierScroll > 0) mn.scrollTop = lastModifierScroll; });
 }
 
 function _renderGroupCard(group) {

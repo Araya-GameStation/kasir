@@ -1,7 +1,15 @@
 let _laporanMode = 'harian';
 let _laporanOffset = 0;
 
+let lastLaporanScroll = 0;
+
+function _saveLaporanScroll() {
+  const m = document.querySelector('main');
+  if (m) lastLaporanScroll = m.scrollTop;
+}
+
 function renderLaporan() {
+  _saveLaporanScroll();
   state.currentView = 'laporan';
   const content = `
     <div class="stack-y">
@@ -21,6 +29,8 @@ function renderLaporan() {
     </div>
   `;
   app.innerHTML = Layout.renderMain(content);
+  requestAnimationFrame(() => { const mn = document.querySelector("main"); if (mn && lastLaporanScroll > 0) mn.scrollTop = lastLaporanScroll; });
+  Layout._restoreSidebarScroll();
 }
 
 function _jamBuka() {

@@ -1,6 +1,7 @@
 window.Layout = {
   renderMain(content) {
-    return `
+    this._saveSidebarScroll();
+    const html = `
       <div class="pos-container">
         ${this.renderSidebar()}
         <div class="main-content-area ${window.sidebarCollapsed ? 'sidebar-collapsed' : ''}">
@@ -13,6 +14,20 @@ window.Layout = {
         </div>
       </div>
     `;
+    return html;
+  },
+
+  _saveSidebarScroll() {
+    const nav = document.querySelector('.sidebar-nav');
+    if (nav) window._sidebarScrollTop = nav.scrollTop;
+  },
+
+  _restoreSidebarScroll() {
+    if (!window._sidebarScrollTop) return;
+    requestAnimationFrame(() => {
+      const nav = document.querySelector('.sidebar-nav');
+      if (nav) nav.scrollTop = window._sidebarScrollTop;
+    });
   },
 
   renderSidebar() {

@@ -252,6 +252,7 @@ function renderMenuManager() {
     </div>
   `;
   app.innerHTML = Layout.renderMain(content);
+  Layout._restoreSidebarScroll();
   requestAnimationFrame(() => {
     const _main = document.querySelector('main');
     if (_main && lastMenuScroll > 0) {
@@ -365,6 +366,7 @@ function openCategory(id) {
     </div>
   `;
   app.innerHTML = Layout.renderMain(content);
+  Layout._restoreSidebarScroll();
   requestAnimationFrame(() => {
     const _main = document.querySelector('main');
     if (_main && lastMenuScroll > 0) {

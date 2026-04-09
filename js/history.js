@@ -128,6 +128,7 @@ function renderHistory() {
     </div>
   `;
   app.innerHTML = Layout.renderMain(content);
+  Layout._restoreSidebarScroll();
 
   const newMainContent = document.querySelector('main');
   if (newMainContent && lastHistoryScrollPosition > 0) {
