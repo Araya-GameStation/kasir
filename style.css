@@ -1405,10 +1405,8 @@ main {
 }
 
 .hover-scale:hover {
-  transform: translateY(-4px) scale(1.02);
-  box-shadow: 8px 8px 20px var(--neu-shadow-dark), -8px -8px 20px var(--neu-shadow-light);
-  transform: translateY(-4px) scale(1.02);
-  box-shadow: 8px 8px 20px var(--neu-shadow-dark), -8px -8px 20px var(--neu-shadow-light);
+  transform: translateY(-3px);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.10), 0 2px 6px rgba(0,0,0,0.06);
 }
 
 .hover-scale:active {
