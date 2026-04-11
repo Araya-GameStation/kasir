@@ -4198,7 +4198,7 @@ textarea {
   gap: 8px;
   overflow-x: auto;
   overflow-y: visible;
-  scroll-behavior: smooth;
+  scroll-behavior: auto;
   padding: 8px 4px;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
@@ -4956,7 +4956,7 @@ textarea {
 }
 
 .main-scroll {
-  scroll-behavior: smooth;
+  scroll-behavior: auto;
 }
 
 .main-inner > * {
