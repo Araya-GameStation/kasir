@@ -129,11 +129,12 @@ function renderHistory() {
   `;
   app.innerHTML = Layout.renderMain(content);
   Layout._restoreSidebarScroll();
-
-  const newMainContent = document.querySelector('main');
-  if (newMainContent && lastHistoryScrollPosition > 0) {
-    newMainContent.scrollTop = lastHistoryScrollPosition;
-  }
+  requestAnimationFrame(() => {
+    const newMainContent = document.querySelector('main');
+    if (newMainContent && lastHistoryScrollPosition > 0) {
+      newMainContent.scrollTop = lastHistoryScrollPosition;
+    }
+  });
 }
 
 function showDetailModal(trxId) {

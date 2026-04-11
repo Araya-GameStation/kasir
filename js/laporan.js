@@ -29,8 +29,11 @@ function renderLaporan() {
     </div>
   `;
   app.innerHTML = Layout.renderMain(content);
-  requestAnimationFrame(() => { const mn = document.querySelector("main"); if (mn && lastLaporanScroll > 0) mn.scrollTop = lastLaporanScroll; });
   Layout._restoreSidebarScroll();
+  requestAnimationFrame(() => {
+    const mn = document.querySelector('main');
+    if (mn && lastLaporanScroll > 0) mn.scrollTop = lastLaporanScroll;
+  });
 }
 
 function _jamBuka() {

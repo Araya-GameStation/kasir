@@ -81,14 +81,13 @@ function renderKasir() {
   app.innerHTML = Layout.renderMain(content);
   Layout._restoreSidebarScroll();
 
-  const _catEl = document.getElementById('category-scroll-container');
-  if (_catEl && state.lastCategoryScroll > 0) _catEl.scrollLeft = state.lastCategoryScroll;
-  const _menuEl = document.getElementById('menu-scroll-container');
-  if (_menuEl && state.lastMenuScroll > 0) _menuEl.scrollTop = state.lastMenuScroll;
-  const _cartEl = document.querySelector('.pos-cart-body');
-  if (_cartEl && state.lastCartScroll > 0) _cartEl.scrollTop = state.lastCartScroll;
-
   requestAnimationFrame(() => {
+    const _catEl = document.getElementById('category-scroll-container');
+    if (_catEl && state.lastCategoryScroll > 0) _catEl.scrollLeft = state.lastCategoryScroll;
+    const _menuEl = document.getElementById('menu-scroll-container');
+    if (_menuEl && state.lastMenuScroll > 0) _menuEl.scrollTop = state.lastMenuScroll;
+    const _cartEl = document.querySelector('.pos-cart-body');
+    if (_cartEl && state.lastCartScroll > 0) _cartEl.scrollTop = state.lastCartScroll;
     const mainEl = document.querySelector('main');
     if (mainEl) mainEl.classList.add('main-kasir-override');
   });
