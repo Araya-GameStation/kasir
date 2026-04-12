@@ -4953,6 +4953,26 @@ textarea {
     right: 8px;
     max-width: 280px;
   }
+  
+  .pos-layout {
+    flex-direction: column;
+    height: auto;
+    overflow: visible;
+  }
+  .pos-right-panel {
+    width: 100%;
+  }
+  .pos-checkout-panel {
+    height: auto;
+  }
+  .checkout-panel {
+    width: 100%;
+    height: 300px;
+    order: 2;
+  }
+  .category-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
 }
 
 .main-scroll {
