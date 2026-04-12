@@ -696,24 +696,24 @@ async function resetRiwayatOnly() {
   const result = await Swal.fire({
     title: 'Reset Riwayat?',
     html: `
-      <div style="text-align:left;font-size:0.85rem">
-        <p style="margin-bottom:8px">Yang akan <b>dihapus</b>:</p>
-        <ul style="margin:0 0 10px 16px;color:#dc3545">
+      <div class="alert-content-wrapper">
+        <p class="alert-title-label">Yang akan <b>dihapus</b>:</p>
+        <ul class="alert-list text-danger">
           <li>Seluruh transaksi (semua shift)</li>
           <li>Seluruh sesi / shift</li>
           <li>Seluruh pengeluaran</li>
           <li>Seluruh open bill</li>
           <li>Riwayat mutasi stok</li>
         </ul>
-        <p style="margin-bottom:8px">Yang <b>tetap aman</b>:</p>
-        <ul style="margin:0 0 10px 16px;color:#16a34a">
+        <p class="alert-title-label">Yang <b>tetap aman</b>:</p>
+        <ul class="alert-list text-success">
           <li>Produk & kategori menu</li>
           <li>Bahan baku & stok</li>
           <li>List meja</li>
           <li>Modifier group</li>
           <li>Pengaturan & struk</li>
         </ul>
-        <p style="color:#dc3545;font-weight:600">
+        <p class="alert-warning-text bold mt-sm">
           <i class="fas fa-exclamation-triangle"></i>
           Stok bahan TIDAK akan di-rollback (anggap sudah terpakai secara fisik)
         </p>
@@ -722,7 +722,8 @@ async function resetRiwayatOnly() {
     showCancelButton: true,
     confirmButtonText: 'Lanjutkan',
     cancelButtonText: 'Batal',
-    confirmButtonColor: '#f59e0b'
+    confirmButtonColor: '#f59e0b',
+    customClass: { popup: 'swal2-is-medium' }
   });
   if (!result.isConfirmed) return;
 
@@ -778,11 +779,11 @@ async function resetData() {
   const result = await Swal.fire({
     title: 'Reset Total Database?',
     html: `
-      <div style="text-align:left;font-size:0.85rem">
-        <p style="color:#dc3545;font-weight:700;margin-bottom:8px">
+      <div class="alert-content-wrapper">
+        <p class="alert-danger-text bold mb-sm">
           <i class="fas fa-skull-crossbones"></i> SEMUA data akan dihapus permanen!
         </p>
-        <ul style="margin:0 0 10px 16px;color:#dc3545">
+        <ul class="alert-list text-danger">
           <li>Transaksi & sesi</li>
           <li>Produk & kategori menu</li>
           <li>Bahan baku & stok</li>
@@ -792,13 +793,14 @@ async function resetData() {
           <li>Riwayat mutasi stok</li>
           <li>Pengaturan toko & struk</li>
         </ul>
-        <p style="color:#6c757d;font-size:0.8rem">Akun login tidak akan terhapus</p>
+        <p class="alert-secondary-text mt-sm">Akun login tidak akan terhapus</p>
       </div>`,
     icon: 'error',
     showCancelButton: true,
     confirmButtonText: 'Lanjutkan',
     cancelButtonText: 'Batal',
-    confirmButtonColor: '#dc3545'
+    confirmButtonColor: '#dc3545',
+    customClass: { popup: 'swal2-is-medium' }
   });
   if (!result.isConfirmed) return;
 

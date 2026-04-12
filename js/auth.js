@@ -138,6 +138,7 @@ async function bukaShift() {
 
         const result = await Utils.showModal({
             title: 'Buka Shift Baru',
+            customClass: 'swal2-is-medium',
             content: `
                 <div class="mb-2 text-left">
                     <label class="form-label mb-2">Pilih Kasir yang Bertugas:</label>
@@ -212,6 +213,7 @@ async function tutupShift() {
 
     const result = await Utils.showModal({
         title: `Rekap Shift ${state.currentSession.shift}`,
+        customClass: 'swal2-is-medium',
         content: `
       <div class="rekap-card">
         <div><span>Transaksi</span><strong> ${transaksiSesi.length}x</strong></div>

@@ -222,8 +222,14 @@ async function printRekapSesi(session, transactions) {
         bytes.push(...encoder.encode("Transaksi: " + transactions.length + "x\n"));
         const totalPenjualan = transactions.reduce((sum, t) => sum + t.total, 0);
         bytes.push(...encoder.encode("Total: Rp " + Utils.formatRupiah(totalPenjualan) + "\n"));
-        const totalCash = transactions.reduce((sum, t) => sum + (t.cashAmount || (t.metodeBayar === 'tunai' ? t.total : 0)), 0);
-        const totalQRIS = transactions.reduce((sum, t) => sum + (t.qrisAmount || (t.metodeBayar === 'qris' ? t.total : 0)), 0);
+        const totalCash = transactions.reduce((sum, t) => {
+            const qris = t.metodeBayar === 'qris' ? (t.total || 0) : (t.qrisAmount || 0);
+            return sum + (t.metodeBayar === 'tunai' ? (t.total || 0) : Math.max(0, (t.total || 0) - qris));
+        }, 0);
+        const totalQRIS = transactions.reduce((sum, t) => {
+            const qrisAmt = t.metodeBayar === 'qris' ? (t.total || 0) : (t.qrisAmount || 0);
+            return sum + qrisAmt;
+        }, 0);
         bytes.push(...encoder.encode("Cash: Rp " + Utils.formatRupiah(totalCash) + "\n"));
         bytes.push(...encoder.encode("QRIS: Rp " + Utils.formatRupiah(totalQRIS) + "\n"));
         bytes.push(...encoder.encode("================================\n"));
@@ -286,9 +292,11 @@ function showPrintDialog(trx) {
           <i class="fas fa-chevron-right"></i>
         </button>
       </div>
-      <button class="btn btn-secondary modal-close" onclick="closePrintDialog()">
-        <i class="fas fa-times"></i> Tutup
-      </button>
+      <div class="modal-footer-inline">
+        <button class="btn btn-secondary modal-close" onclick="closePrintDialog()">
+          <i class="fas fa-times"></i> Tutup
+        </button>
+      </div>
     </div>
   `;
     document.body.appendChild(modal);

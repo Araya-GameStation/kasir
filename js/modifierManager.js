@@ -172,14 +172,14 @@ function _resepSectionHtml(optIdx, resep = []) {
     ? resep.map((r, i) => _resepRowHtml(optIdx, i, r)).join('')
     : _resepRowHtml(optIdx, 0);
   return `
-    <div class="opt-resep-section" id="resep-section-${optIdx}" style="margin-top: 12px; padding: 12px; background: var(--surface2); border-radius: var(--radius-sm); border: 1px dashed var(--border);">
-      <div class="opt-resep-header" style="margin-bottom: 8px;">
+    <div class="opt-resep-section" id="resep-section-${optIdx}">
+      <div class="opt-resep-header mb-sm">
         <small class="text-muted"><i class="fas fa-flask"></i> Resep Bahan (opsional)</small>
       </div>
       <div class="recipe-container" id="resep-container-${optIdx}">
         ${rows}
       </div>
-      <button type="button" class="recipe-add btn btn-sm btn-outline-primary" style="width:100%; border-style: dashed;" onclick="window._addModResepRow('${optIdx}')">
+      <button type="button" class="recipe-add btn btn-sm btn-outline-primary btn-dashed-full" onclick="window._addModResepRow('${optIdx}')">
         <i class="fas fa-plus"></i> Tambah Bahan
       </button>
     </div>
@@ -206,17 +206,17 @@ window._addModResepRow = function(optIdx) {
 
 function _optionRowHtml(idx, opt = {}) {
   return `
-    <div class="modifier-option-row-wrap" data-id="${opt.id || ''}" id="opt-row-${idx}" style="margin-bottom: 16px; padding-bottom: 16px; border-bottom: 1px solid var(--border-light);">
-      <div class="modifier-option-row" style="margin-bottom: 6px;">
+    <div class="modifier-option-row-wrap border-bottom-light" data-id="${opt.id || ''}" id="opt-row-${idx}">
+      <div class="modifier-option-row mb-sm">
         <input type="text" class="form-input opt-name" placeholder="Nama opsi" value="${opt.name || ''}">
-        <div style="position: relative; display: flex; align-items: center;">
-          <span style="position: absolute; left: 10px; font-size: 0.9rem; color: var(--text-muted); pointer-events: none;">Rp</span>
-          <input type="number" class="form-input opt-price" style="padding-left: 32px;" placeholder="0" value="${opt.price === undefined ? '' : opt.price}" min="0">
+        <div class="input-currency-wrapper">
+          <span class="input-currency-prefix">Rp</span>
+          <input type="number" class="form-input opt-price input-with-currency" placeholder="0" value="${opt.price === undefined ? '' : opt.price}" min="0">
         </div>
         <label class="modifier-default-label">
           <input type="checkbox" class="opt-default" ${opt.isDefault ? 'checked' : ''}> Default
         </label>
-        <button class="btn-icon-sm btn-icon-danger" style="margin-left:auto;" onclick="document.getElementById('opt-row-${idx}').remove()">
+        <button class="btn-icon-sm btn-icon-danger ml-auto" onclick="document.getElementById('opt-row-${idx}').remove()">
           <i class="fas fa-times"></i>
         </button>
       </div>
@@ -485,7 +485,8 @@ async function deleteModifierGroup(id) {
     showCancelButton: true,
     confirmButtonText: 'Hapus',
     cancelButtonText: 'Batal',
-    confirmButtonColor: '#dc3545'
+    confirmButtonColor: '#dc3545',
+    customClass: { popup: 'swal2-is-konfirmasi' }
   });
   if (!result.isConfirmed) return;
 

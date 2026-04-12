@@ -224,10 +224,10 @@ window.showOpenBillList = function () {
             <div class="open-bill-list-right">
               <div class="open-bill-list-total">Rp ${Utils.formatRupiah(ob.total || 0)}</div>
               <div class="open-bill-list-actions">
-                <button class="btn btn-sm btn-secondary" onclick="event.stopPropagation();window._viewOpenBillDetail('${ob.id}')" title="Lihat Isi" style="padding: 6px 12px;">
+                <button class="btn btn-sm btn-secondary open-bill-action-btn" onclick="event.stopPropagation();window._viewOpenBillDetail('${ob.id}')" title="Lihat Isi">
                   <i class="fas fa-list"></i>
                 </button>
-                <button class="btn btn-sm btn-secondary" onclick="event.stopPropagation();window._printOpenBill(this, '${ob.id}')" title="Cetak Struk Sementara" style="padding: 6px 12px;">
+                <button class="btn btn-sm btn-secondary open-bill-action-btn" onclick="event.stopPropagation();window._printOpenBill(this, '${ob.id}')" title="Cetak Struk Sementara">
                   <i class="fas fa-print"></i>
                 </button>
                 <button class="btn btn-sm btn-primary" onclick="event.stopPropagation();window._goPayOpenBill('${ob.id}')">
@@ -318,7 +318,7 @@ window._viewOpenBillDetail = function (obId) {
     const unitPrice = item.price + (item.modifierTotal || 0);
 
     return `
-      <div class="riwayat-stok-row" style="margin-bottom:8px;">
+      <div class="riwayat-stok-row mb-sm">
         <div class="riwayat-stok-left">
           <div class="riwayat-stok-label">${item.name}</div>
           <div class="riwayat-stok-meta">@ ${Utils.formatRupiah(unitPrice)}</div>
@@ -327,14 +327,14 @@ window._viewOpenBillDetail = function (obId) {
         </div>
         <div class="riwayat-stok-right">
           <div class="riwayat-stok-qty">${item.qty}x</div>
-          <div style="font-weight:700; color:var(--primary); font-size:0.85rem;">Rp ${Utils.formatRupiah(unitPrice * item.qty)}</div>
+          <div class="open-bill-item-total">Rp ${Utils.formatRupiah(unitPrice * item.qty)}</div>
         </div>
       </div>
     `;
   }).join('');
 
   modal.innerHTML = `
-    <div class="modal modal-wide" style="width: min(90vw, 450px);">
+    <div class="modal open-bill-detail-modal">
       <div class="modal-header">
         <h3><i class="fas fa-list"></i> Detail Pesanan ${ob.mejaNomor ? 'Meja ' + ob.mejaNomor : ob.mejaNama || 'Pesanan'}</h3>
         <button class="btn-icon-sm" onclick="document.getElementById('modal-ob-detail').remove()">
@@ -343,9 +343,9 @@ window._viewOpenBillDetail = function (obId) {
       </div>
       <div class="modal-body">
         ${itemsHtml}
-        <div style="display:flex; justify-content:space-between; margin-top:16px; padding-top:12px; border-top:1px dashed var(--border);">
-          <div style="font-weight:600;">Total Tagihan</div>
-          <div style="font-weight:700; font-size:1.1rem; color:var(--primary);">Rp ${Utils.formatRupiah(ob.total)}</div>
+        <div class="open-bill-total-row">
+          <div class="open-bill-total-label">Total Tagihan</div>
+          <div class="open-bill-total-amount">Rp ${Utils.formatRupiah(ob.total)}</div>
         </div>
       </div>
       <div class="modal-footer-inline">
@@ -365,7 +365,8 @@ window._cancelOpenBill = async function (obId) {
     showCancelButton: true,
     confirmButtonText: 'Ya, batalkan',
     cancelButtonText: 'Batal',
-    confirmButtonColor: '#dc3545'
+    confirmButtonColor: '#dc3545',
+    customClass: { popup: 'swal2-is-konfirmasi' }
   });
   if (!result.isConfirmed) return;
   await dbCloud.collection('openBills').doc(obId).update({ status: 'cancelled', cancelledAt: new Date() });

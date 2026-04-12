@@ -537,7 +537,8 @@ async function lihatRiwayatStok(bahanId) {
       showCancelButton: true,
       confirmButtonText: 'Ya, Hapus & Rollback',
       cancelButtonText: 'Batal',
-      confirmButtonColor: '#dc3545'
+      confirmButtonColor: '#dc3545',
+      customClass: { popup: 'swal2-is-konfirmasi' }
     });
     if (!result.isConfirmed) return;
 

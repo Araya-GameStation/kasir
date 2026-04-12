@@ -14,8 +14,14 @@ function renderHistory() {
   state.currentView = "history";
   const totalIncome = state.transactions.reduce((sum, t) => sum + t.total, 0);
   const totalTransaksi = state.transactions.length;
-  const totalCASH = state.transactions.reduce((sum, t) => sum + (t.cashAmount || (t.metodeBayar === 'tunai' ? t.total : 0)), 0);
-  const totalQRIS = state.transactions.reduce((sum, t) => sum + (t.qrisAmount || (t.metodeBayar === 'qris' ? t.total : 0)), 0);
+  const totalCASH = state.transactions.reduce((sum, t) => {
+    const qris = t.metodeBayar === 'qris' ? (t.total || 0) : (t.qrisAmount || 0);
+    return sum + (t.metodeBayar === 'tunai' ? (t.total || 0) : Math.max(0, (t.total || 0) - qris));
+  }, 0);
+  const totalQRIS = state.transactions.reduce((sum, t) => {
+    const qrisAmt = t.metodeBayar === 'qris' ? (t.total || 0) : (t.qrisAmount || 0);
+    return sum + qrisAmt;
+  }, 0);
   const recap = {};
   state.transactions.forEach(t => t.items.forEach(i => {
     if (!recap[i.name]) recap[i.name] = { qty: 0, total: 0 };
@@ -309,8 +315,10 @@ async function deleteSelected() {
         Hanya <b>${fromActiveShift.length} transaksi</b> dari shift aktif yang akan dihapus & di-rollback.`,
       icon: 'warning',
       showCancelButton: true,
-      confirmButtonText: 'Lanjutkan',
-      cancelButtonText: 'Batal'
+      confirmButtonText: 'Ya, Hapus Semua',
+      cancelButtonText: 'Batal',
+      confirmButtonColor: '#dc3545',
+      customClass: { popup: 'swal2-is-konfirmasi' }
     });
     if (!ok.isConfirmed) return;
   } else {

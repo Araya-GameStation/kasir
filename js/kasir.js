@@ -17,11 +17,11 @@ function renderKasir() {
   const filteredMenus = (state.selectedCategory === "ALL"
     ? state.menus
     : state.menus.filter(m => {
-        const cat = state.categories.find(c => c.id === m.categoryId);
-        return cat && cat.name === state.selectedCategory;
-      })
+      const cat = state.categories.find(c => c.id === m.categoryId);
+      return cat && cat.name === state.selectedCategory;
+    })
   ).filter(m => !state.kasirSearchQuery || m.name.toLowerCase().includes(state.kasirSearchQuery.toLowerCase()))
-   .sort((a, b) => a.name.localeCompare(b.name));
+    .sort((a, b) => a.name.localeCompare(b.name));
 
   const content = `
     <div class="pos-layout">
@@ -115,18 +115,18 @@ function renderMenuItem(m) {
   return `
     <div class="card hover-scale ${!stockOk.ok ? 'product-disabled' : ''}" onclick="addToCart('${m.id}')">
       ${m.imageUrl
-        ? `<div class="card-img"><img src="${m.imageUrl}" alt="${m.name}" class="img-card-pos"></div>`
-        : `<div class="img-placeholder-pos"><i class="fas fa-utensils"></i></div>`
-      }
+      ? `<div class="card-img"><img src="${m.imageUrl}" alt="${m.name}" class="img-card-pos"></div>`
+      : `<div class="img-placeholder-pos"><i class="fas fa-utensils"></i></div>`
+    }
       <div class="card-title">${m.name}</div>
       <div class="card-price">Rp ${Utils.formatRupiah(m.price)}</div>
       ${hasModifiers ? `<div class="card-modifier-badge"><i class="fas fa-sliders-h"></i></div>` : ''}
       ${!stockOk.ok
-        ? `<div class="card-stock text-danger"><i class="fas fa-exclamation-circle"></i> ${stockOk.kurang}</div>`
-        : stokTersedia !== null
-          ? `<div class="card-stock"><i class="fas ${m.resep ? 'fa-cubes' : 'fa-box'}"></i> Stok: ${stokTersedia} ${m.resep ? 'porsi' : ''}</div>`
-          : `<div class="card-stock text-muted"><i class="fas fa-infinity"></i></div>`
-      }
+      ? `<div class="card-stock text-danger"><i class="fas fa-exclamation-circle"></i> ${stockOk.kurang}</div>`
+      : stokTersedia !== null
+        ? `<div class="card-stock"><i class="fas ${m.resep ? 'fa-cubes' : 'fa-box'}"></i> Stok: ${stokTersedia} ${m.resep ? 'porsi' : ''}</div>`
+        : `<div class="card-stock text-muted"><i class="fas fa-infinity"></i></div>`
+    }
     </div>
   `;
 }
@@ -225,7 +225,7 @@ function selectCategory(c) {
     });
   }
   _renderKasirMenuGrid();
-  
+
   const grid = document.getElementById('menu-grid-container');
   if (grid) {
     grid.classList.remove('category-enter');
@@ -238,11 +238,11 @@ function _renderKasirMenuGrid() {
   const filteredMenus = (state.selectedCategory === "ALL"
     ? state.menus
     : state.menus.filter(m => {
-        const cat = state.categories.find(c => c.id === m.categoryId);
-        return cat && cat.name === state.selectedCategory;
-      })
+      const cat = state.categories.find(c => c.id === m.categoryId);
+      return cat && cat.name === state.selectedCategory;
+    })
   ).filter(m => !state.kasirSearchQuery || m.name.toLowerCase().includes(state.kasirSearchQuery.toLowerCase()))
-   .sort((a, b) => a.name.localeCompare(b.name));
+    .sort((a, b) => a.name.localeCompare(b.name));
 
   const grid = document.getElementById('menu-grid-container');
   if (grid) {
@@ -335,8 +335,8 @@ async function _showModifierModal(item, modGroups, stokTersedia) {
             </div>
             <div class="modifier-options-grid">
               ${(group.options || []).map(opt => {
-                const isSelected = selected.some(s => s.id === opt.id);
-                return `
+          const isSelected = selected.some(s => s.id === opt.id);
+          return `
                   <button
                     class="modifier-opt-btn ${isSelected ? 'selected' : ''}"
                     data-group="${group.id}"
@@ -349,7 +349,7 @@ async function _showModifierModal(item, modGroups, stokTersedia) {
                     </span>
                   </button>
                 `;
-              }).join('')}
+        }).join('')}
             </div>
           </div>
         `;
@@ -376,7 +376,7 @@ async function _showModifierModal(item, modGroups, stokTersedia) {
       </div>
     `;
 
-    window._toggleModifierOpt = function(groupId, optId, maxSelect, required) {
+    window._toggleModifierOpt = function (groupId, optId, maxSelect, required) {
       const group = modGroups.find(g => g.id === groupId);
       if (!group) return;
       const opt = group.options.find(o => o.id === optId);
@@ -401,7 +401,7 @@ async function _showModifierModal(item, modGroups, stokTersedia) {
       if (body) body.innerHTML = buildContent();
     };
 
-    window._confirmModifier = function() {
+    window._confirmModifier = function () {
       for (const group of modGroups) {
         if (group.required && (selections[group.id] || []).length === 0) {
           Utils.showToast(`"${group.name}" wajib dipilih`, 'warning');
@@ -489,8 +489,8 @@ async function pilihMeja() {
       <h3><i class="fas fa-chair"></i> Pilih Meja</h3>
       <div class="table-grid">
         ${tables.map(meja => {
-          const hasOpenBill = !!openBillByMeja[meja.id];
-          return `
+    const hasOpenBill = !!openBillByMeja[meja.id];
+    return `
             <button class="table-btn ${hasOpenBill ? 'table-btn-occupied' : ''}"
               data-id="${meja.id}" data-nomor="${meja.nomor}" data-nama="${meja.nama}">
               <div class="table-number">${meja.nomor}</div>
@@ -498,7 +498,7 @@ async function pilihMeja() {
               ${hasOpenBill ? `<div class="table-open-bill-badge"><i class="fas fa-receipt"></i> Open Bill</div>` : ''}
             </button>
           `;
-        }).join('')}
+  }).join('')}
       </div>
       <div class="modal-actions">
         <button class="btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">Batal</button>
@@ -525,7 +525,8 @@ async function pilihMeja() {
           showCancelButton: true,
           confirmButtonText: 'Lanjutkan Order',
           denyButtonText: 'Bayar Sekarang',
-          cancelButtonText: 'Pilih Meja Lain'
+          cancelButtonText: 'Pilih Meja Lain',
+          customClass: { popup: 'swal2-is-konfirmasi' }
         });
 
         if (result.isConfirmed) {
@@ -761,7 +762,7 @@ async function showPaymentModal() {
 
   document.body.appendChild(modal);
 
-  window.selectPaymentMethod = function(method) {
+  window.selectPaymentMethod = function (method) {
     state.selectedPaymentMethod = method;
     if (method === 'tunai') { state.cashAmount = 0; state.qrisAmount = 0; }
     else if (method === 'qris') { state.cashAmount = 0; state.qrisAmount = total; }
@@ -774,7 +775,7 @@ async function showPaymentModal() {
   };
 
   document.getElementById('cancelPaymentBtn').addEventListener('click', () => modal.remove());
-  document.getElementById('processPaymentBtn').addEventListener('click', async function() {
+  document.getElementById('processPaymentBtn').addEventListener('click', async function () {
     const btn = this;
     Utils.setButtonLoading(btn, true);
     try {
@@ -856,7 +857,7 @@ function renderModalPaymentContent() {
   `;
 }
 
-window.handleCashInput = function(value) {
+window.handleCashInput = function (value) {
   const cash = parseInt(value.replace(/\./g, '')) || 0;
   const total = getTotal();
   state.cashAmount = cash;
@@ -867,7 +868,7 @@ window.handleCashInput = function(value) {
   }
 };
 
-window.handleMixedCashInput = function(value) {
+window.handleMixedCashInput = function (value) {
   const cash = parseInt(value.replace(/\./g, '')) || 0;
   const total = getTotal();
   state.cashAmount = cash;
@@ -878,7 +879,7 @@ window.handleMixedCashInput = function(value) {
   updateMixedSummary();
 };
 
-window.handleMixedQrisInput = function(value) {
+window.handleMixedQrisInput = function (value) {
   const qris = parseInt(value.replace(/\./g, '')) || 0;
   const total = getTotal();
   state.qrisAmount = qris;
@@ -907,7 +908,7 @@ function updateMixedSummary() {
   }
 }
 
-window.quickCash = function(amount) {
+window.quickCash = function (amount) {
   if (state.selectedPaymentMethod === 'mixed') {
     const total = getTotal();
     state.cashAmount = Math.min(amount, total);
@@ -925,7 +926,7 @@ window.quickCash = function(amount) {
   }
 };
 
-window.quickQris = function(amount) {
+window.quickQris = function (amount) {
   const total = getTotal();
   state.qrisAmount = Math.min(Math.max(amount, 0), total);
   state.cashAmount = total - state.qrisAmount;
@@ -948,13 +949,13 @@ window.simpanKeOpenBill = simpanKeOpenBill;
 window.bayar = bayar;
 window.showPaymentModal = showPaymentModal;
 
-window._onKasirSearch = function(val) {
+window._onKasirSearch = function (val) {
   state.kasirSearchQuery = val;
   _renderKasirMenuGrid();
 
 };
 
-window._clearKasirSearch = function() {
+window._clearKasirSearch = function () {
   state.kasirSearchQuery = '';
   renderKasir();
 };

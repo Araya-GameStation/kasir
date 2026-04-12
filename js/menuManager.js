@@ -262,7 +262,7 @@ function renderMenuManager() {
 }
 
 async function showAddCategoryModal() {
-  const name = await Utils.showPrompt('Nama Kategori Baru');
+  const name = await Utils.showPrompt('Nama Kategori Baru', '', 'swal2-is-medium');
   if (!name) return;
   try {
     await dbCloud.collection("categories").add({
@@ -279,7 +279,7 @@ async function showAddCategoryModal() {
 async function editCategory(id) {
   const category = state.categories.find(c => c.id === id);
   if (!category) return;
-  const newName = await Utils.showPrompt('Edit Nama Kategori', category.name);
+  const newName = await Utils.showPrompt('Edit Nama Kategori', category.name, 'swal2-is-medium');
   if (!newName || newName === category.name) return;
   try {
     await dbCloud.collection("categories").doc(id).update({

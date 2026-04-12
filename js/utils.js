@@ -114,7 +114,8 @@ window.Utils = {
             cancelButtonText: 'Batal',
             background: _cssVar('--swal-bg'),
             color:      _cssVar('--swal-text'),
-            backdrop:   _cssVar('--swal-backdrop')
+            backdrop:   _cssVar('--swal-backdrop'),
+            customClass: { popup: 'swal2-is-konfirmasi' }
         });
         return result.isConfirmed;
     },
@@ -147,6 +148,7 @@ window.Utils = {
             background: _cssVar('--swal-bg'),
             color:      _cssVar('--swal-text'),
             backdrop:   _cssVar('--swal-backdrop'),
+            customClass: { popup: options.customClass || 'swal2-is-modal' },
             preConfirm: function() {
                 if (window._modalAction === 'cancel') window._modalAction = (primaryBtn && primaryBtn.action) || 'save';
                 var btn = (options.buttons || []).find(function(b){ return b.action === window._modalAction; });
@@ -159,7 +161,7 @@ window.Utils = {
         return action;
     },
 
-    showPrompt: async function(message, defaultValue) {
+    showPrompt: async function(message, defaultValue, customClass) {
         defaultValue = defaultValue || '';
         var result = await Swal.fire({
             title: message,
@@ -173,6 +175,7 @@ window.Utils = {
             background: _cssVar('--swal-bg'),
             color:      _cssVar('--swal-text'),
             backdrop:   _cssVar('--swal-backdrop'),
+            customClass: { popup: customClass || 'swal2-is-konfirmasi' },
             inputValidator: function(value) {
                 if (!value) return 'Input tidak boleh kosong';
             }
